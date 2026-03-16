@@ -1,0 +1,1119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FineTune — Production LLM Fine-Tuning on a Free GPU</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inconsolata:wght@300;400;600;700;900&family=Unbounded:wght@300;400;600;900&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --bg:#0a0800;
+  --paper:#120e04;
+  --border:#241c08;
+  --gold:#f0a800;
+  --orange:#f06000;
+  --cyan:#00d4f0;
+  --green:#00e080;
+  --pink:#f000a0;
+  --text:#f0e8d8;
+  --muted:#5a4820;
+  --dim:#3a2c10;
+  --mono:'Inconsolata',monospace;
+  --display:'Unbounded',sans-serif;
+}
+
+html{scroll-behavior:smooth}
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:var(--mono);
+  font-size:13px;
+  line-height:1.75;
+  min-height:100vh;
+  overflow-x:hidden;
+}
+
+/* warm diagonal grain overlay */
+body::before{
+  content:'';
+  position:fixed;
+  inset:0;
+  background-image:
+    repeating-linear-gradient(
+      60deg,
+      transparent,
+      transparent 38px,
+      rgba(240,168,0,0.018) 38px,
+      rgba(240,168,0,0.018) 39px
+    ),
+    repeating-linear-gradient(
+      -60deg,
+      transparent,
+      transparent 38px,
+      rgba(240,168,0,0.012) 38px,
+      rgba(240,168,0,0.012) 39px
+    );
+  pointer-events:none;
+  z-index:0;
+}
+
+/* ── PROGRESS BAR ── */
+.progress-bar{
+  position:fixed;
+  top:0;left:0;
+  height:2px;
+  background:var(--gold);
+  z-index:200;
+  transform-origin:left;
+  transform:scaleX(0);
+  transition:transform 0.08s linear;
+}
+
+/* ── NAV ── */
+nav{
+  position:sticky;
+  top:0;
+  z-index:100;
+  background:rgba(10,8,0,0.92);
+  backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border);
+  padding:14px 40px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+}
+.nav-logo{
+  font-family:var(--display);
+  font-size:14px;
+  font-weight:900;
+  color:var(--gold);
+  letter-spacing:0.02em;
+}
+.nav-logo span{color:var(--text);font-weight:300}
+.nav-links{display:flex;gap:24px;align-items:center}
+.nav-links a{
+  font-size:10px;
+  letter-spacing:0.12em;
+  text-transform:uppercase;
+  color:var(--dim);
+  text-decoration:none;
+  transition:color 0.15s;
+}
+.nav-links a:hover{color:var(--gold)}
+.nav-badge{
+  font-family:var(--display);
+  font-size:9px;
+  padding:4px 12px;
+  border:1px solid #2a1c00;
+  color:var(--gold);
+  letter-spacing:0.1em;
+  text-transform:uppercase;
+  font-weight:600;
+}
+
+/* ── HERO ── */
+.hero{
+  position:relative;
+  z-index:1;
+  max-width:1100px;
+  margin:0 auto;
+  padding:96px 40px 80px;
+}
+
+.hero-eyebrow{
+  font-family:var(--display);
+  font-size:9px;
+  font-weight:600;
+  letter-spacing:0.22em;
+  text-transform:uppercase;
+  color:var(--gold);
+  margin-bottom:28px;
+  display:flex;
+  align-items:center;
+  gap:14px;
+  opacity:0;
+  animation:riseIn 0.55s ease 0.1s forwards;
+}
+.hero-eyebrow::before{content:'';width:28px;height:1px;background:var(--gold)}
+.hero-eyebrow::after{content:'';flex:1;height:1px;background:var(--border)}
+
+h1{
+  font-family:var(--display);
+  font-size:clamp(44px,7.5vw,100px);
+  font-weight:900;
+  line-height:0.9;
+  letter-spacing:-0.025em;
+  margin-bottom:36px;
+  opacity:0;
+  animation:riseIn 0.55s ease 0.2s forwards;
+}
+h1 .gold{color:var(--gold)}
+h1 .ghost{color:#1a1408}
+
+.hero-desc{
+  font-size:15px;
+  line-height:1.85;
+  color:#7a6030;
+  max-width:600px;
+  margin-bottom:44px;
+  opacity:0;
+  animation:riseIn 0.55s ease 0.3s forwards;
+}
+.hero-desc strong{color:var(--text)}
+
+.hero-stats{
+  display:flex;
+  gap:0;
+  flex-wrap:wrap;
+  border:1px solid var(--border);
+  margin-bottom:48px;
+  opacity:0;
+  animation:riseIn 0.55s ease 0.4s forwards;
+}
+.stat{
+  flex:1;
+  min-width:120px;
+  padding:18px 24px;
+  border-right:1px solid var(--border);
+}
+.stat:last-child{border-right:none}
+.stat-num{
+  font-family:var(--display);
+  font-size:24px;
+  font-weight:900;
+  color:var(--text);
+  line-height:1;
+  margin-bottom:5px;
+}
+.stat-num .unit{font-size:11px;color:var(--muted);font-weight:300}
+.stat-label{font-size:9px;color:var(--muted);letter-spacing:0.12em;text-transform:uppercase}
+
+.hero-actions{
+  display:flex;
+  gap:12px;
+  flex-wrap:wrap;
+  opacity:0;
+  animation:riseIn 0.55s ease 0.5s forwards;
+}
+.btn-gold{
+  font-family:var(--display);
+  font-size:11px;
+  font-weight:700;
+  letter-spacing:0.08em;
+  text-transform:uppercase;
+  padding:14px 30px;
+  background:var(--gold);
+  color:#000;
+  text-decoration:none;
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+  transition:all 0.15s;
+}
+.btn-gold:hover{background:#ffc000;transform:translateY(-1px)}
+.btn-outline{
+  font-family:var(--display);
+  font-size:11px;
+  font-weight:600;
+  letter-spacing:0.08em;
+  text-transform:uppercase;
+  padding:14px 28px;
+  border:1px solid var(--border);
+  color:var(--muted);
+  text-decoration:none;
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+  transition:all 0.15s;
+}
+.btn-outline:hover{border-color:var(--gold);color:var(--gold)}
+
+/* ── PIPELINE STRIP ── */
+.pipeline{
+  border-top:1px solid var(--border);
+  border-bottom:1px solid var(--border);
+  padding:22px 40px;
+  display:flex;
+  align-items:center;
+  gap:0;
+  max-width:1100px;
+  margin:0 auto 80px;
+  position:relative;
+  z-index:1;
+  overflow-x:auto;
+}
+.pipe-step{
+  display:flex;
+  align-items:center;
+  gap:0;
+  flex-shrink:0;
+}
+.pipe-node{
+  padding:10px 18px;
+  border:1px solid var(--border);
+  font-family:var(--display);
+  font-size:9px;
+  font-weight:700;
+  letter-spacing:0.1em;
+  text-transform:uppercase;
+  color:var(--muted);
+  white-space:nowrap;
+  transition:all 0.15s;
+}
+.pipe-node:hover{border-color:var(--gold);color:var(--gold)}
+.pipe-node.highlight{
+  border-color:#2a1c00;
+  background:#120e00;
+  color:var(--gold);
+}
+.pipe-arrow{
+  font-size:11px;
+  color:var(--dim);
+  padding:0 8px;
+  flex-shrink:0;
+}
+
+/* ── SECTION ── */
+.section{
+  max-width:1100px;
+  margin:0 auto;
+  padding:0 40px 100px;
+  position:relative;
+  z-index:1;
+}
+.section-header{
+  display:flex;
+  align-items:baseline;
+  gap:16px;
+  margin-bottom:44px;
+}
+.section-num{
+  font-family:var(--display);
+  font-size:10px;
+  font-weight:600;
+  color:var(--dim);
+  letter-spacing:0.18em;
+}
+.section-title{
+  font-family:var(--display);
+  font-size:clamp(20px,3vw,34px);
+  font-weight:900;
+  color:var(--text);
+  letter-spacing:-0.015em;
+}
+.section-title .hl{color:var(--gold)}
+.section-line{flex:1;height:1px;background:var(--border)}
+
+/* ── LESSONS GRID ── */
+.lessons-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(320px,1fr));
+  gap:1px;
+  background:var(--border);
+  border:1px solid var(--border);
+}
+
+.phase-banner{
+  grid-column:1/-1;
+  background:var(--bg);
+  padding:16px 0 12px;
+  border-bottom:1px solid var(--border);
+  display:flex;
+  align-items:center;
+  gap:14px;
+}
+.phase-pip{
+  width:28px;height:2px;
+  flex-shrink:0;
+}
+.phase-name-text{
+  font-family:var(--display);
+  font-size:9px;
+  font-weight:700;
+  letter-spacing:0.2em;
+  text-transform:uppercase;
+}
+.phase-range{
+  font-size:9px;
+  color:var(--dim);
+  letter-spacing:0.1em;
+}
+.phase-banner::after{content:'';flex:1;height:1px;background:var(--border)}
+
+.lesson-card{
+  background:var(--bg);
+  padding:26px 26px 22px;
+  text-decoration:none;
+  display:flex;
+  flex-direction:column;
+  gap:11px;
+  transition:background 0.15s;
+  position:relative;
+  overflow:hidden;
+}
+.lesson-card::after{
+  content:'';
+  position:absolute;
+  bottom:0;left:0;right:0;
+  height:1px;
+  background:var(--gold);
+  transform:scaleX(0);
+  transform-origin:left;
+  transition:transform 0.25s ease;
+}
+.lesson-card:hover{background:#0e0a00}
+.lesson-card:hover::after{transform:scaleX(1)}
+
+.card-top{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+}
+.card-num{
+  font-family:var(--display);
+  font-size:9px;
+  font-weight:600;
+  letter-spacing:0.15em;
+  color:var(--dim);
+  text-transform:uppercase;
+}
+.card-pill{
+  font-family:var(--display);
+  font-size:8px;
+  font-weight:700;
+  letter-spacing:0.1em;
+  text-transform:uppercase;
+  padding:2px 9px;
+  border:1px solid var(--border);
+  color:var(--dim);
+}
+.card-pill.theory  {border-color:#1a1200;color:#806000}
+.card-pill.data    {border-color:#001a18;color:#006060}
+.card-pill.quant   {border-color:#1a0020;color:#800060}
+.card-pill.config  {border-color:#1a0800;color:#803000}
+.card-pill.code    {border-color:#001818;color:#007060}
+.card-pill.debug   {border-color:#1a1000;color:#807000}
+.card-pill.eval    {border-color:#001210;color:#005050}
+.card-pill.deploy  {border-color:#0a1a00;color:#406000}
+.card-pill.align   {border-color:#180010;color:#600050}
+.card-pill.capstone{border-color:#1a1200;color:var(--gold)}
+
+.card-title{
+  font-family:var(--display);
+  font-size:15px;
+  font-weight:900;
+  color:var(--text);
+  line-height:1.2;
+  letter-spacing:-0.01em;
+}
+.card-sub{
+  display:block;
+  font-family:var(--display);
+  font-size:9px;
+  font-weight:400;
+  color:var(--dim);
+  margin-top:4px;
+  letter-spacing:0.08em;
+  text-transform:uppercase;
+}
+
+.card-desc{
+  font-size:11px;
+  color:#4a3818;
+  line-height:1.75;
+  flex:1;
+}
+
+.card-footer{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding-top:12px;
+  border-top:1px solid var(--border);
+  margin-top:auto;
+}
+.card-meta{
+  display:flex;
+  gap:12px;
+  font-size:10px;
+  color:var(--dim);
+}
+.card-arrow{
+  font-size:14px;
+  color:var(--dim);
+  transition:all 0.15s;
+}
+.lesson-card:hover .card-arrow{
+  color:var(--gold);
+  transform:translateX(4px);
+}
+
+/* capstone card special */
+.lesson-card.capstone-card{
+  background:#0c0a00;
+  border-left:2px solid var(--gold);
+}
+.lesson-card.capstone-card:hover{background:#100e00}
+
+/* ── ABOUT SECTION ── */
+.info-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:1px;
+  background:var(--border);
+  border:1px solid var(--border);
+}
+.info-cell{
+  background:var(--bg);
+  padding:30px 34px;
+}
+.info-cell.wide{grid-column:1/-1}
+.cell-label{
+  font-family:var(--display);
+  font-size:9px;
+  font-weight:700;
+  letter-spacing:0.2em;
+  text-transform:uppercase;
+  color:var(--gold);
+  margin-bottom:16px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+.cell-label::after{content:'';flex:1;height:1px;background:var(--border)}
+.cell-body{font-size:12px;color:#5a4828;line-height:1.85}
+.cell-body strong{color:var(--text)}
+.cell-body code{
+  background:#0c0a00;
+  border:1px solid var(--border);
+  padding:1px 7px;
+  color:var(--gold);
+  font-size:11px;
+}
+.item-list{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+.item-row{
+  display:flex;
+  align-items:flex-start;
+  gap:12px;
+  font-size:11px;
+  color:#5a4828;
+  line-height:1.6;
+}
+.item-row::before{
+  content:'▸';
+  color:var(--gold);
+  flex-shrink:0;
+  margin-top:1px;
+  font-size:9px;
+}
+
+/* code block */
+.code-block{
+  background:#060400;
+  border:1px solid var(--border);
+  border-left:3px solid var(--gold);
+  margin-top:28px;
+  overflow:hidden;
+}
+.code-bar{
+  background:#0a0800;
+  padding:9px 16px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  border-bottom:1px solid var(--border);
+}
+.code-file{font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted)}
+.code-tag{font-size:9px;padding:2px 8px;background:var(--gold);color:#000;font-weight:900}
+pre{
+  padding:20px;
+  font-size:12px;
+  line-height:1.75;
+  color:#c0a870;
+  overflow-x:auto;
+}
+.kw{color:#f06000}
+.fn{color:#00d4f0}
+.st{color:#f0a800}
+.cm{color:#2a1e08;font-style:italic}
+.nm{color:#f0a800}
+.cl{color:#f000a0}
+.op{color:#3a2810}
+
+/* ── COMPARISON TABLE ── */
+.compare-table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:11px;
+  margin-top:4px;
+}
+.compare-table th{
+  background:var(--paper);
+  padding:10px 14px;
+  text-align:left;
+  font-family:var(--display);
+  font-size:8px;
+  font-weight:700;
+  letter-spacing:0.15em;
+  text-transform:uppercase;
+  color:var(--muted);
+  border-bottom:1px solid var(--border);
+}
+.compare-table td{
+  padding:9px 14px;
+  border-bottom:1px solid #1a1408;
+  color:#5a4828;
+  vertical-align:top;
+}
+.compare-table td:first-child{color:var(--text)}
+.compare-table tr.gold-row td{color:var(--gold)}
+
+/* ── FOOTER ── */
+footer{
+  border-top:1px solid var(--border);
+  padding:36px 40px;
+  max-width:1100px;
+  margin:0 auto;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  flex-wrap:wrap;
+  gap:16px;
+  position:relative;
+  z-index:1;
+}
+.footer-logo{
+  font-family:var(--display);
+  font-size:13px;
+  font-weight:900;
+  color:var(--gold);
+}
+.footer-logo span{color:var(--dim);font-weight:300}
+.footer-note{font-size:10px;color:var(--dim);letter-spacing:0.08em}
+.footer-links{display:flex;gap:20px}
+.footer-links a{
+  font-size:10px;
+  letter-spacing:0.1em;
+  text-transform:uppercase;
+  color:var(--dim);
+  text-decoration:none;
+  transition:color 0.15s;
+}
+.footer-links a:hover{color:var(--gold)}
+
+/* ── ANIMATIONS ── */
+@keyframes riseIn{
+  from{opacity:0;transform:translateY(18px)}
+  to{opacity:1;transform:translateY(0)}
+}
+.fade-in{
+  opacity:0;
+  transform:translateY(14px);
+  transition:opacity 0.45s ease,transform 0.45s ease;
+}
+.fade-in.visible{opacity:1;transform:translateY(0)}
+
+/* ── RESPONSIVE ── */
+@media(max-width:700px){
+  nav{padding:14px 20px}
+  .hero{padding:60px 20px 60px}
+  .pipeline{padding:18px 20px}
+  .section{padding:0 20px 60px}
+  .info-grid{grid-template-columns:1fr}
+  .hero-stats{flex-direction:column}
+  .stat{border-right:none;border-bottom:1px solid var(--border)}
+  footer{padding:28px 20px;flex-direction:column;align-items:flex-start}
+  .nav-links{display:none}
+}
+</style>
+</head>
+<body>
+
+<div class="progress-bar" id="progress"></div>
+
+<!-- ── NAV ── -->
+<nav>
+  <div class="nav-logo">fine<span>Tune</span></div>
+  <div class="nav-links">
+    <a href="#lessons">Lessons</a>
+    <a href="#pipeline">Pipeline</a>
+    <a href="#about">About</a>
+    <a href="index.html">← nanoLlama</a>
+  </div>
+  <div class="nav-badge">Free GPU · Colab</div>
+</nav>
+
+<!-- ── HERO ── -->
+<div class="hero">
+  <div class="hero-eyebrow">QLoRA · SFT · DPO · vLLM · Colab T4</div>
+
+  <h1>
+    <span class="ghost">Production</span><br>
+    <span class="gold">Fine-Tuning</span><br>
+    <span class="ghost">on a</span><br>
+    Free GPU
+  </h1>
+
+  <p class="hero-desc">
+    10 lessons that take you from raw data to a deployed, aligned model —
+    all on a free Colab T4 GPU.
+    <strong>QLoRA, SFTTrainer, DPO, merging, and vLLM serving.</strong>
+    The exact pipeline used in production at every ML team that ships fine-tuned models.
+  </p>
+
+  <div class="hero-stats">
+    <div class="stat">
+      <div class="stat-num">10</div>
+      <div class="stat-label">Lessons</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">7<span class="unit">B</span></div>
+      <div class="stat-label">Model Size</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">~2<span class="unit">hrs</span></div>
+      <div class="stat-label">Training Time</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">0<span class="unit">$</span></div>
+      <div class="stat-label">GPU Cost</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">0.26<span class="unit">%</span></div>
+      <div class="stat-label">Trainable Params</div>
+    </div>
+  </div>
+
+  <div class="hero-actions">
+    <a href="ft-lesson-01.html" class="btn-gold">Start Lesson 01 →</a>
+    <a href="#lessons" class="btn-outline">View All Lessons</a>
+  </div>
+</div>
+
+<!-- ── PIPELINE STRIP ── -->
+<div class="pipeline" id="pipeline">
+  <div class="pipe-step">
+    <div class="pipe-node highlight">Curate Data</div>
+    <div class="pipe-arrow">→</div>
+  </div>
+  <div class="pipe-step">
+    <div class="pipe-node highlight">4-bit QLoRA</div>
+    <div class="pipe-arrow">→</div>
+  </div>
+  <div class="pipe-step">
+    <div class="pipe-node highlight">SFT Training</div>
+    <div class="pipe-arrow">→</div>
+  </div>
+  <div class="pipe-step">
+    <div class="pipe-node">Evaluate</div>
+    <div class="pipe-arrow">→</div>
+  </div>
+  <div class="pipe-step">
+    <div class="pipe-node">DPO Align</div>
+    <div class="pipe-arrow">→</div>
+  </div>
+  <div class="pipe-step">
+    <div class="pipe-node">Merge Adapter</div>
+    <div class="pipe-arrow">→</div>
+  </div>
+  <div class="pipe-step">
+    <div class="pipe-node">Deploy vLLM</div>
+  </div>
+</div>
+
+<!-- ── LESSONS ── -->
+<div class="section" id="lessons">
+  <div class="section-header fade-in">
+    <span class="section-num">01 —</span>
+    <h2 class="section-title">The <span class="hl">10 Lessons</span></h2>
+    <span class="section-line"></span>
+  </div>
+
+  <div class="lessons-grid fade-in">
+
+    <!-- PHASE 1: FOUNDATIONS -->
+    <div class="phase-banner">
+      <div class="phase-pip" style="background:var(--gold)"></div>
+      <span class="phase-name-text" style="color:var(--gold)">Phase 1 — Understanding Fine-Tuning</span>
+      <span class="phase-range">Lessons 01 – 02</span>
+    </div>
+
+    <!-- L01 -->
+    <a href="ft-lesson-01.html" class="lesson-card">
+      <div class="card-top">
+        <span class="card-num">Lesson 01</span>
+        <span class="card-pill theory">Theory</span>
+      </div>
+      <div class="card-title">
+        Why Fine-Tuning?
+        <span class="card-sub">Pre-Train vs Adapt</span>
+      </div>
+      <div class="card-desc">
+        A base LLM knows everything — but answers like an internet document, not an assistant. Fine-tuning shapes behavior without re-learning facts. The three phases of making an LLM, when to fine-tune vs prompt, and the LoRA delta equation.
+      </div>
+      <div class="card-footer">
+        <div class="card-meta"><span>⏱ 45 min</span><span>💡 Mental Models</span></div>
+        <span class="card-arrow">→</span>
+      </div>
+    </a>
+
+    <!-- L02 -->
+    <a href="ft-lesson-02.html" class="lesson-card">
+      <div class="card-top">
+        <span class="card-num">Lesson 02</span>
+        <span class="card-pill data">Data</span>
+      </div>
+      <div class="card-title">
+        Datasets &amp; Data Quality
+        <span class="card-sub">Chat Templates · Loss Masking</span>
+      </div>
+      <div class="card-desc">
+        Data quality is the single biggest lever in fine-tuning — not model size or hyperparameters. Chat templates, quality filters, loss masking (labels=−100 for user tokens), and why 500 perfect examples beats 50K noisy ones.
+      </div>
+      <div class="card-footer">
+        <div class="card-meta"><span>⏱ 60 min</span><span>📊 Data Engineering</span></div>
+        <span class="card-arrow">→</span>
+      </div>
+    </a>
+
+    <!-- PHASE 2: THE TECHNIQUE -->
+    <div class="phase-banner">
+      <div class="phase-pip" style="background:var(--cyan)"></div>
+      <span class="phase-name-text" style="color:var(--cyan)">Phase 2 — The Technique (QLoRA)</span>
+      <span class="phase-range">Lessons 03 – 05</span>
+    </div>
+
+    <!-- L03 -->
+    <a href="ft-lesson-03.html" class="lesson-card">
+      <div class="card-top">
+        <span class="card-num">Lesson 03</span>
+        <span class="card-pill quant">Quantization</span>
+      </div>
+      <div class="card-title">
+        QLoRA: 4-Bit
+        <span class="card-sub">NF4 · Double Quant · Memory Math</span>
+      </div>
+      <div class="card-desc">
+        QLoRA fits a 7B model into 10GB via NF4 quantization — a data type designed for the normal distribution of neural weights. Full memory breakdown: 28GB (FP32) → 5GB (NF4+adapters). Why prepare_model_for_kbit_training() is non-optional.
+      </div>
+      <div class="card-footer">
+        <div class="card-meta"><span>⏱ 75 min</span><span>💾 Memory Math</span></div>
+        <span class="card-arrow">→</span>
+      </div>
+    </a>
+
+    <!-- L04 -->
+    <a href="ft-lesson-04.html" class="lesson-card">
+      <div class="card-top">
+        <span class="card-num">Lesson 04</span>
+        <span class="card-pill config">Config</span>
+      </div>
+      <div class="card-title">
+        LoRA Hyperparameters
+        <span class="card-sub">Rank · Alpha · Target Modules</span>
+      </div>
+      <div class="card-desc">
+        Rank r, alpha scaling, dropout, and which layers to inject. Most tutorials cargo-cult r=16 without knowing why. The rank guide (r=4 to r=64+), alpha/r scaling intuition, q/v vs all-attention vs +FFN tradeoffs.
+      </div>
+      <div class="card-footer">
+        <div class="card-meta"><span>⏱ 55 min</span><span>⚙️ Configuration</span></div>
+        <span class="card-arrow">→</span>
+      </div>
+    </a>
+
+    <!-- L05 -->
+    <a href="ft-lesson-05.html" class="lesson-card">
+      <div class="card-top">
+        <span class="card-num">Lesson 05</span>
+        <span class="card-pill code">Code</span>
+      </div>
+      <div class="card-title">
+        TRL &amp; SFTTrainer
+        <span class="card-sub">Complete Colab Notebook</span>
+      </div>
+      <div class="card-desc">
+        The complete runnable Colab notebook: install → 4-bit model → LoRA adapters → SFTConfig (every argument explained) → train. paged_adamw_32bit, gradient_checkpointing, bf16, effective batch size — the exact code to fine-tune Llama-3-8B in under 2 hours for free.
+      </div>
+      <div class="card-footer">
+        <div class="card-meta"><span>⏱ 90 min</span><span>🚀 Colab T4</span></div>
+        <span class="card-arrow">→</span>
+      </div>
+    </a>
+
+    <!-- PHASE 3: DIAGNOSTICS -->
+    <div class="phase-banner">
+      <div class="phase-pip" style="background:var(--orange)"></div>
+      <span class="phase-name-text" style="color:var(--orange)">Phase 3 — Diagnose &amp; Evaluate</span>
+      <span class="phase-range">Lessons 06 – 07</span>
+    </div>
+
+    <!-- L06 -->
+    <a href="ft-lesson-06.html" class="lesson-card">
+      <div class="card-top">
+        <span class="card-num">Lesson 06</span>
+        <span class="card-pill debug">Debug</span>
+      </div>
+      <div class="card-title">
+        Monitoring &amp; Debugging
+        <span class="card-sub">Loss Curves · 7 Failure Modes</span>
+      </div>
+      <div class="card-desc">
+        A fine-tuning run looks healthy until it doesn't. Six loss curve patterns (healthy, overfitting, NaN, plateau, too-fast, spike). Diagnostic checklist: print_trainable_parameters(), decode a sample, check masked_pct. OOM fixes ranked by impact.
+      </div>
+      <div class="card-footer">
+        <div class="card-meta"><span>⏱ 60 min</span><span>📈 Diagnostics</span></div>
+        <span class="card-arrow">→</span>
+      </div>
+    </a>
+
+    <!-- L07 -->
+    <a href="ft-lesson-07.html" class="lesson-card">
+      <div class="card-top">
+        <span class="card-num">Lesson 07</span>
+        <span class="card-pill eval">Eval</span>
+      </div>
+      <div class="card-title">
+        Evaluation &amp; Benchmarks
+        <span class="card-sub">LM-Eval · LLM-as-Judge</span>
+      </div>
+      <div class="card-desc">
+        Evaluation is where most fine-tuning projects fail silently. The three-level pyramid: lm-evaluation-harness benchmarks (fast), GPT-4o-mini as judge (correlates 0.85 with human ratings), human eval (ground truth). When task-specific beats generic.
+      </div>
+      <div class="card-footer">
+        <div class="card-meta"><span>⏱ 55 min</span><span>📐 Measurement</span></div>
+        <span class="card-arrow">→</span>
+      </div>
+    </a>
+
+    <!-- PHASE 4: PRODUCTION -->
+    <div class="phase-banner">
+      <div class="phase-pip" style="background:var(--green)"></div>
+      <span class="phase-name-text" style="color:var(--green)">Phase 4 — Ship It</span>
+      <span class="phase-range">Lessons 08 – 10</span>
+    </div>
+
+    <!-- L08 -->
+    <a href="ft-lesson-08.html" class="lesson-card">
+      <div class="card-top">
+        <span class="card-num">Lesson 08</span>
+        <span class="card-pill deploy">Deploy</span>
+      </div>
+      <div class="card-title">
+        Merging &amp; Serving
+        <span class="card-sub">vLLM · Ollama · HF Hub</span>
+      </div>
+      <div class="card-desc">
+        merge_and_unload() folds W + BA permanently into the base model — zero inference overhead. Push to HF Hub for versioning. vLLM for OpenAI-compatible API (3–10× faster than HF generate). Ollama for local GGUF deployment.
+      </div>
+      <div class="card-footer">
+        <div class="card-meta"><span>⏱ 65 min</span><span>🚀 Production</span></div>
+        <span class="card-arrow">→</span>
+      </div>
+    </a>
+
+    <!-- L09 -->
+    <a href="ft-lesson-09.html" class="lesson-card">
+      <div class="card-top">
+        <span class="card-num">Lesson 09</span>
+        <span class="card-pill align">Alignment</span>
+      </div>
+      <div class="card-title">
+        DPO: Preference Tuning
+        <span class="card-sub">Chosen vs Rejected · No Reward Model</span>
+      </div>
+      <div class="card-desc">
+        SFT teaches what to say. DPO teaches which response is better. Training on (chosen, rejected) pairs without a reward model. DPO loss intuition, beta as regularization, self-play DPO (generate 4 → judge → pick best/worst), LR 100× lower than SFT.
+      </div>
+      <div class="card-footer">
+        <div class="card-meta"><span>⏱ 70 min</span><span>🎯 Alignment</span></div>
+        <span class="card-arrow">→</span>
+      </div>
+    </a>
+
+    <!-- L10 — CAPSTONE -->
+    <a href="ft-lesson-10.html" class="lesson-card capstone-card">
+      <div class="card-top">
+        <span class="card-num">Lesson 10</span>
+        <span class="card-pill capstone">Capstone</span>
+      </div>
+      <div class="card-title" style="color:var(--gold)">
+        Full Pipeline
+        <span class="card-sub" style="color:#3a2800">End-to-End Production Run</span>
+      </div>
+      <div class="card-desc" style="color:#5a4010">
+        Every concept from lessons 01–09 assembled into one script. Curate data → QLoRA SFT → evaluate → DPO align → merge → sanity check → deploy. The production checklist with target metrics for every stage. What comes next toward the $400K role.
+      </div>
+      <div class="card-footer" style="border-color:#2a1c00">
+        <div class="card-meta" style="color:#3a2800"><span>⏱ 120 min</span><span>🏁 Complete Pipeline</span></div>
+        <span class="card-arrow" style="color:var(--gold)">→</span>
+      </div>
+    </a>
+
+  </div>
+</div>
+
+<!-- ── ABOUT ── -->
+<div class="section" id="about">
+  <div class="section-header fade-in">
+    <span class="section-num">02 —</span>
+    <h2 class="section-title">What You'll <span class="hl">Actually Build</span></h2>
+    <span class="section-line"></span>
+  </div>
+
+  <div class="info-grid fade-in">
+
+    <div class="info-cell">
+      <div class="cell-label">Philosophy</div>
+      <div class="cell-body">
+        <p>Most fine-tuning tutorials copy-paste configs without explaining the choices. <strong>This course explains every number.</strong> Why r=16 and not r=8? Why BF16 and not FP16? Why paged_adamw and not regular AdamW?</p>
+        <p style="margin-top:12px">The result: you can debug any fine-tuning run that breaks, adapt any config to your specific task, and reason from first principles when the tutorial doesn't cover your case.</p>
+      </div>
+    </div>
+
+    <div class="info-cell">
+      <div class="cell-label">Prerequisites</div>
+      <div class="cell-body">
+        <div class="item-list">
+          <div class="item-row">Python — comfortable with classes and decorators</div>
+          <div class="item-row">Basic PyTorch — tensors, nn.Module, training loops</div>
+          <div class="item-row">Familiarity with transformers (complete the nanoLlama course first, or read the Attention paper)</div>
+          <div class="item-row">A Google account — free Colab T4 GPU is all you need</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-cell">
+      <div class="cell-label">Stack</div>
+      <div class="cell-body">
+        <div class="item-list">
+          <div class="item-row"><code>transformers</code> — model loading, tokenizer, chat templates</div>
+          <div class="item-row"><code>peft</code> — LoRA adapter injection, get_peft_model</div>
+          <div class="item-row"><code>trl</code> — SFTTrainer, DPOTrainer, SFTConfig</div>
+          <div class="item-row"><code>bitsandbytes</code> — NF4 quantization, 4-bit loading</div>
+          <div class="item-row"><code>vllm</code> — production serving, OpenAI-compatible API</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-cell">
+      <div class="cell-label">Full vs QLoRA</div>
+      <div class="cell-body">
+        <table class="compare-table">
+          <thead>
+            <tr><th>Approach</th><th>VRAM</th><th>Quality</th><th>Cost</th></tr>
+          </thead>
+          <tbody>
+            <tr class="gold-row"><td>QLoRA (this course)</td><td>10–16 GB</td><td>95%+</td><td>Free</td></tr>
+            <tr><td>LoRA (FP16)</td><td>20–40 GB</td><td>97%+</td><td>~$10/run</td></tr>
+            <tr><td>Full fine-tune</td><td>80–160 GB</td><td>100%</td><td>$100–$1K</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="info-cell wide">
+      <div class="cell-label">The Core Code</div>
+      <div class="code-block">
+        <div class="code-bar">
+          <span class="code-file">qlora_core.py — what the full 10-lesson course teaches</span>
+          <span class="code-tag">PYTHON</span>
+        </div>
+<pre><span class="kw">from</span> transformers <span class="kw">import</span> AutoModelForCausalLM, BitsAndBytesConfig
+<span class="kw">from</span> peft          <span class="kw">import</span> LoraConfig, get_peft_model, prepare_model_for_kbit_training
+<span class="kw">from</span> trl           <span class="kw">import</span> SFTTrainer, SFTConfig
+<span class="kw">import</span> torch
+
+<span class="cm"># Step 1: Load 7B model in 4-bit NF4 — fits in 10GB VRAM</span>
+model <span class="op">=</span> AutoModelForCausalLM.<span class="fn">from_pretrained</span>(
+    <span class="st">"mistralai/Mistral-7B-Instruct-v0.3"</span>,
+    quantization_config<span class="op">=</span>BitsAndBytesConfig(
+        load_in_4bit<span class="op">=</span><span class="kw">True</span>, bnb_4bit_quant_type<span class="op">=</span><span class="st">"nf4"</span>,
+        bnb_4bit_compute_dtype<span class="op">=</span>torch.bfloat16, bnb_4bit_use_double_quant<span class="op">=</span><span class="kw">True</span>
+    ),
+    device_map<span class="op">=</span><span class="st">"auto"</span>,
+)
+model <span class="op">=</span> <span class="fn">prepare_model_for_kbit_training</span>(model)  <span class="cm"># cast norms to FP32</span>
+
+<span class="cm"># Step 2: Inject LoRA adapters — 0.26% of params become trainable</span>
+model <span class="op">=</span> <span class="fn">get_peft_model</span>(model, LoraConfig(
+    r<span class="op">=</span><span class="nm">16</span>, lora_alpha<span class="op">=</span><span class="nm">16</span>, lora_dropout<span class="op">=</span><span class="nm">0.05</span>, bias<span class="op">=</span><span class="st">"none"</span>,
+    task_type<span class="op">=</span><span class="st">"CAUSAL_LM"</span>,
+    target_modules<span class="op">=</span>[<span class="st">"q_proj"</span>, <span class="st">"k_proj"</span>, <span class="st">"v_proj"</span>, <span class="st">"o_proj"</span>],
+))
+
+<span class="cm"># Step 3: Train — ~90 min on free Colab T4</span>
+<span class="cl">SFTTrainer</span>(model<span class="op">=</span>model, train_dataset<span class="op">=</span>dataset,
+    args<span class="op">=</span><span class="cl">SFTConfig</span>(output_dir<span class="op">=</span><span class="st">"./out"</span>, num_train_epochs<span class="op">=</span><span class="nm">3</span>,
+        per_device_train_batch_size<span class="op">=</span><span class="nm">4</span>, gradient_accumulation_steps<span class="op">=</span><span class="nm">4</span>,
+        learning_rate<span class="op">=</span><span class="nm">2e-4</span>, bf16<span class="op">=</span><span class="kw">True</span>, optim<span class="op">=</span><span class="st">"paged_adamw_32bit"</span>,
+        gradient_checkpointing<span class="op">=</span><span class="kw">True</span>, max_seq_length<span class="op">=</span><span class="nm">2048</span>,
+    ), tokenizer<span class="op">=</span>tokenizer,
+).<span class="fn">train</span>()</pre>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── FOOTER ── -->
+<footer>
+  <div class="footer-logo">fine<span>Tune</span></div>
+  <div class="footer-note">QLoRA · SFT · DPO · Free GPU · 10 Lessons</div>
+  <div class="footer-links">
+    <a href="ft-lesson-01.html">Start →</a>
+    <a href="index.html">← nanoLlama</a>
+    <a href="https://github.com" target="_blank">GitHub</a>
+  </div>
+</footer>
+
+<script>
+// Scroll progress bar
+const prog = document.getElementById('progress');
+window.addEventListener('scroll', () => {
+  const h = document.documentElement;
+  const pct = h.scrollTop / (h.scrollHeight - h.clientHeight);
+  prog.style.transform = `scaleX(${pct})`;
+}, { passive: true });
+
+// Staggered fade-in on scroll
+const io = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (!e.isIntersecting) return;
+    e.target.classList.add('visible');
+    const children = e.target.querySelectorAll('.lesson-card, .info-cell');
+    children.forEach((el, i) => {
+      el.style.opacity = '0';
+      el.style.transform = 'translateY(10px)';
+      setTimeout(() => {
+        el.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+        el.style.opacity = '1';
+        el.style.transform = 'translateY(0)';
+      }, i * 50);
+    });
+    io.unobserve(e.target);
+  });
+}, { threshold: 0.04 });
+
+document.querySelectorAll('.fade-in').forEach(el => io.observe(el));
+
+// Pipeline hover interaction
+document.querySelectorAll('.pipe-node').forEach(node => {
+  node.addEventListener('mouseenter', () => {
+    document.querySelectorAll('.pipe-node').forEach(n => {
+      if (n !== node) n.style.opacity = '0.4';
+    });
+  });
+  node.addEventListener('mouseleave', () => {
+    document.querySelectorAll('.pipe-node').forEach(n => n.style.opacity = '1');
+  });
+});
+</script>
+</body>
+</html>
