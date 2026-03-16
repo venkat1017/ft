@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lesson 07 - Evaluation & Benchmarks | FineTune</title>
+<link href="https://fonts.googleapis.com/css2?family=Inconsolata:wght@300;400;600;700;900&family=Unbounded:wght@300;400;600;900&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0800;--paper:#120e04;--border:#241c08;
+  --gold:#f0a800;--orange:#f06000;--cyan:#00d4f0;--pink:#f000a0;--green:#00e080;
+  --text:#f0e8d8;--muted:#5a4820;
+  --mono:'Inconsolata',monospace;--display:'Unbounded',sans-serif;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:13px;line-height:1.75;min-height:100vh}
+nav{background:var(--paper);border-bottom:1px solid var(--border);padding:12px 32px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.nav-brand{font-family:var(--display);font-size:13px;font-weight:900;color:var(--gold);letter-spacing:0.02em}
+.nav-brand span{color:var(--text);font-weight:300}
+.nav-lessons{display:flex;gap:2px}
+.nav-lessons a{display:flex;align-items:center;justify-content:center;width:26px;height:26px;font-size:9px;border:1px solid var(--border);color:var(--muted);text-decoration:none;transition:all 0.15s}
+.nav-lessons a.active{background:var(--gold);border-color:var(--gold);color:#000;font-weight:900}
+.nav-lessons a.done{border-color:#241800;color:#5a3a00}
+.nav-lessons a:hover:not(.active){border-color:var(--gold);color:var(--gold)}
+.nav-right{font-size:10px;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase}
+.hero{padding:60px 36px 36px;max-width:920px;margin:0 auto}
+.badge{font-family:var(--display);font-size:10px;font-weight:600;letter-spacing:0.15em;color:var(--gold);margin-bottom:12px;text-transform:uppercase;display:block}
+h1{font-family:var(--display);font-size:clamp(28px,4.5vw,54px);font-weight:900;line-height:1.0;margin-bottom:12px;color:var(--text)}
+h1 .hl{color:var(--gold)}
+.hero-meta{display:flex;gap:18px;font-size:10px;color:var(--muted);margin-bottom:20px;text-transform:uppercase;letter-spacing:0.08em;flex-wrap:wrap}
+.hero-desc{font-size:14px;line-height:1.8;color:#a09060;max-width:680px;border-left:2px solid var(--gold);padding-left:18px}
+.main{max-width:920px;margin:0 auto;padding:0 36px 80px}
+.section{margin-bottom:52px}
+h2{font-family:var(--display);font-size:16px;font-weight:900;color:var(--text);margin-bottom:18px;display:flex;align-items:center;gap:10px;text-transform:uppercase;letter-spacing:0.05em}
+h2::after{content:'';flex:1;height:1px;background:var(--border)}
+h3{font-size:11px;font-weight:700;color:var(--gold);letter-spacing:0.15em;text-transform:uppercase;margin:20px 0 10px}
+p{color:#a09060;line-height:1.8;margin-bottom:14px}
+p strong{color:var(--text);font-weight:600}
+code{background:#0c0a04;padding:2px 6px;color:var(--gold);font-size:11px;border:1px solid var(--border)}
+.code-block{background:#070600;border:1px solid var(--border);border-left:3px solid var(--gold);margin:18px 0;overflow:hidden}
+.code-header{background:#0c0a04;padding:9px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)}
+.code-title{font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted)}
+.code-label{font-size:9px;padding:2px 8px;background:var(--gold);color:#000;font-weight:900;letter-spacing:0.08em}
+pre{padding:18px;overflow-x:auto;font-family:var(--mono);font-size:12px;line-height:1.75;color:#d0c090}
+.kw{color:#f06000}.fn{color:#00d4f0}.st{color:#f0a800}.cm{color:#2a1e08;font-style:italic}.nm{color:#f0a800}.cl{color:#f000a0}.op{color:#4a3818}
+.concept{background:var(--paper);border:1px solid var(--border);padding:18px 22px;margin:18px 0}
+.concept-label{font-family:var(--display);font-size:9px;font-weight:600;letter-spacing:0.15em;text-transform:uppercase;color:var(--cyan);margin-bottom:8px}
+.concept p{margin:0;font-size:12px;color:#807040}
+.callout{display:flex;gap:14px;padding:14px 18px;margin:16px 0;border:1px solid}
+.callout.info{border-color:#001824;background:#020608}
+.callout.win{border-color:#102800;background:#040a00}
+.callout.warn{border-color:#301800;background:#0a0600}
+.callout.key{border-color:#182800;background:#060a00}
+.callout-icon{font-size:14px;flex-shrink:0;margin-top:2px}
+.callout-text{font-size:11px;line-height:1.7;color:#807040}
+.callout-text strong{color:var(--text)}
+.checklist{list-style:none;margin:16px 0}
+.checklist li{display:flex;gap:12px;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px;color:#807040}
+.checklist li:last-child{border-bottom:none}
+.checklist li::before{content:'○';color:var(--muted);flex-shrink:0}
+.checklist li.done::before{content:'◆';color:var(--gold)}
+.next-lesson{background:var(--paper);border:1px solid var(--border);padding:24px 28px;display:flex;align-items:center;justify-content:space-between;margin-top:56px;text-decoration:none;transition:border-color 0.15s}
+.next-lesson:hover{border-color:var(--gold)}
+.next-label{font-family:var(--display);font-size:9px;font-weight:600;letter-spacing:0.15em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.next-title{font-family:var(--display);font-size:14px;font-weight:900;color:var(--text)}
+.next-arrow{font-size:24px;color:var(--gold)}
+/* tables */
+.data-table{width:100%;border-collapse:collapse;font-size:11px;margin:16px 0}
+.data-table th{background:var(--paper);padding:8px 12px;text-align:left;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);font-weight:600;font-family:var(--display)}
+.data-table td{padding:8px 12px;border-bottom:1px solid #1a1408;color:#a09060}
+.data-table td:first-child{color:var(--text)}
+.data-table tr.highlight td{color:var(--gold)}
+/* comparison grid */
+.cmp-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:18px 0}
+.cmp-card{background:var(--paper);border:1px solid var(--border);padding:16px}
+.cmp-card.good{border-color:#182800}
+.cmp-card.bad{border-color:#281800}
+.cmp-label{font-family:var(--display);font-size:9px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:8px;color:var(--muted)}
+.cmp-card.good .cmp-label{color:var(--green)}
+.cmp-card.bad .cmp-label{color:var(--orange)}
+.cmp-text{font-size:11px;color:#807040;line-height:1.6}
+</style>
+</head>
+<body>
+<nav><div class="nav-brand">fine<span>Tune</span></div><div class="nav-lessons"><a href="ft-lesson-01.html" class="done">01</a><a href="ft-lesson-02.html" class="done">02</a><a href="ft-lesson-03.html" class="done">03</a><a href="ft-lesson-04.html" class="done">04</a><a href="ft-lesson-05.html" class="done">05</a><a href="ft-lesson-06.html" class="done">06</a><a href="ft-lesson-07.html" class="active">07</a><a href="ft-lesson-08.html" class="">08</a><a href="ft-lesson-09.html" class="">09</a><a href="ft-lesson-10.html" class="">10</a></div><div class="nav-right">Free GPU · Colab</div></nav>
+
+<div class="hero">
+  <span class="badge">Lesson 07 of 10 - Measurement</span>
+  <h1>Evaluation &amp;<br><span class="hl">Benchmarks</span></h1>
+  <div class="hero-meta"><span>⏱ 55 min</span><span>📐 LM-Eval Harness</span><span>🤖 LLM-as-Judge</span></div>
+  <p class="hero-desc">A model that scores well on your training loss might be worse at the actual task. <strong>Evaluation is where most fine-tuning projects fail silently</strong>. We cover three complementary approaches: task-specific benchmarks, LLM-as-judge scoring, and human vibes testing - and when to use each.</p>
+</div>
+<div class="main">
+
+<div class="section">
+<h2>The Evaluation Pyramid</h2>
+<div style="background:var(--paper);border:1px solid var(--border);padding:22px;margin:18px 0">
+  <div style="display:flex;flex-direction:column;gap:8px">
+    <div style="background:#0a0800;border:1px solid #301800;padding:14px;border-left:3px solid var(--gold)">
+      <div style="font-family:var(--display);font-size:9px;font-weight:600;color:var(--gold);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px">Level 3: Human Evaluation (ground truth)</div>
+      <div style="font-size:11px;color:#907040">Have real users rate outputs. Expensive, slow, but most reliable. Run monthly or per major version. N=50 samples minimum.</div>
+    </div>
+    <div style="background:#080a00;border:1px solid #182800;padding:14px;border-left:3px solid var(--green)">
+      <div style="font-family:var(--display);font-size:9px;font-weight:600;color:var(--green);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px">Level 2: LLM-as-Judge (fast proxy)</div>
+      <div style="font-size:11px;color:#907040">Use GPT-4 or Claude to score your model's outputs. Correlates ~0.85 with human ratings. Run per epoch. N=200 samples. Use MT-Bench prompts.</div>
+    </div>
+    <div style="background:#060808;border:1px solid #001820;padding:14px;border-left:3px solid var(--cyan)">
+      <div style="font-family:var(--display);font-size:9px;font-weight:600;color:var(--cyan);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px">Level 1: Benchmark Scores (fast, automated)</div>
+      <div style="font-size:11px;color:#907040">lm-evaluation-harness on standard benchmarks. Catches regressions instantly. Run per commit. Tells you if you broke something, not if you improved it.</div>
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="section">
+<h2>Running lm-evaluation-harness</h2>
+<div class="code-block">
+<div class="code-header"><div class="code-title">run_evals.sh - benchmark your fine-tuned model</div><div class="code-label">COLAB CELL</div></div>
+<pre><span class="cm"># Install evaluation harness</span>
+<span class="op">!</span>pip install <span class="op">-</span>q lm-eval
+
+<span class="cm"># Run standard benchmarks on your model
+# --model hf: use HuggingFace model
+# --tasks: comma-separated benchmark names
+# --num_fewshot: few-shot examples in context</span>
+<span class="op">!</span>lm_eval --model hf     --model_args <span class="st">"pretrained=./llama3-finetuned,dtype=bfloat16"</span>     --tasks hellaswag,mmlu,arc_easy,arc_challenge     --num_fewshot <span class="nm">5</span>     --batch_size <span class="nm">4</span>     --device cuda:0     --output_path ./eval_results.json
+
+<span class="cm"># Key benchmarks to track:
+# hellaswag   - commonsense reasoning (0-shot)
+# mmlu        - broad knowledge (5-shot)
+# arc_easy    - grade-school science (0-shot)
+# arc_challenge - harder science (25-shot)
+# truthfulqa  - factual accuracy
+# gsm8k       - math word problems (8-shot)</span></pre>
+</div>
+<div class="code-block">
+<div class="code-header"><div class="code-title">llm_judge.py - score your model with GPT-4</div><div class="code-label">LLM-AS-JUDGE</div></div>
+<pre><span class="kw">from</span> openai <span class="kw">import</span> OpenAI
+
+client <span class="op">=</span> OpenAI()
+
+JUDGE_PROMPT <span class="op">=</span> <span class="st">&quot;&quot;&quot;You are an expert evaluator. Rate the assistant response on:
+1. Helpfulness (1-5): Does it answer the question fully?
+2. Accuracy (1-5): Are facts correct?
+3. Clarity (1-5): Is it well-organized and clear?
+
+User question: {question}
+Assistant response: {response}
+
+Respond only in JSON: {{"helpfulness": N, "accuracy": N, "clarity": N, "reasoning": "..."}}&quot;&quot;&quot;</span>
+
+<span class="kw">def</span> <span class="fn">judge_response</span>(question, response):
+    result <span class="op">=</span> client.chat.completions.<span class="fn">create</span>(
+        model<span class="op">=</span><span class="st">"gpt-4o-mini"</span>,  <span class="cm"># cheap but good enough for scoring</span>
+        messages<span class="op">=</span>[{<span class="st">"role"</span>: <span class="st">"user"</span>, <span class="st">"content"</span>: JUDGE_PROMPT.<span class="fn">format</span>(
+            question<span class="op">=</span>question, response<span class="op">=</span>response
+        )}],
+        response_format<span class="op">=</span>{<span class="st">"type"</span>: <span class="st">"json_object"</span>},
+    )
+    <span class="kw">import</span> json
+    <span class="kw">return</span> json.<span class="fn">loads</span>(result.choices[<span class="nm">0</span>].message.content)
+
+<span class="cm"># Evaluate 200 held-out test examples</span>
+scores <span class="op">=</span> []
+<span class="kw">for</span> ex <span class="kw">in</span> test_examples[:200]:
+    response <span class="op">=</span> <span class="fn">generate</span>(model, ex[<span class="st">"question"</span>])
+    score    <span class="op">=</span> <span class="fn">judge_response</span>(ex[<span class="st">"question"</span>], response)
+    scores.<span class="fn">append</span>(score)
+
+avg_helpfulness <span class="op">=</span> <span class="fn">sum</span>(s[<span class="st">"helpfulness"</span>] <span class="kw">for</span> s <span class="kw">in</span> scores) <span class="op">/</span> <span class="fn">len</span>(scores)
+<span class="fn">print</span>(<span class="st">f"Average helpfulness: {avg_helpfulness:.2f}/5.0"</span>)
+<span class="cm"># Compare this between base model and fine-tuned model</span></pre>
+</div>
+</div>
+
+<div class="section">
+<h2>What You Now Know</h2>
+<ul class="checklist">
+<li class="done">Three evaluation levels: benchmarks (fast), LLM-judge (proxy), human (ground truth)</li>
+<li class="done">lm-evaluation-harness: standard benchmarks to catch regressions</li>
+<li class="done">LLM-as-judge: GPT-4o-mini scoring correlates ~0.85 with human ratings</li>
+<li class="done">Always compare fine-tuned vs base model on the SAME benchmark</li>
+<li class="done">Task-specific evals beat generic benchmarks for measuring your use case</li>
+</ul>
+</div>
+
+<a href="ft-lesson-08.html" class="next-lesson"><div><div class="next-label">Next Lesson</div><div class="next-title">Lesson 08 - Merging & Serving Adapters</div></div><div class="next-arrow">→</div></a>
+</div></body></html>

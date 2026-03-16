@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lesson 09 - DPO: Preference Fine-Tuning | FineTune</title>
+<link href="https://fonts.googleapis.com/css2?family=Inconsolata:wght@300;400;600;700;900&family=Unbounded:wght@300;400;600;900&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0800;--paper:#120e04;--border:#241c08;
+  --gold:#f0a800;--orange:#f06000;--cyan:#00d4f0;--pink:#f000a0;--green:#00e080;
+  --text:#f0e8d8;--muted:#5a4820;
+  --mono:'Inconsolata',monospace;--display:'Unbounded',sans-serif;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:13px;line-height:1.75;min-height:100vh}
+nav{background:var(--paper);border-bottom:1px solid var(--border);padding:12px 32px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.nav-brand{font-family:var(--display);font-size:13px;font-weight:900;color:var(--gold);letter-spacing:0.02em}
+.nav-brand span{color:var(--text);font-weight:300}
+.nav-lessons{display:flex;gap:2px}
+.nav-lessons a{display:flex;align-items:center;justify-content:center;width:26px;height:26px;font-size:9px;border:1px solid var(--border);color:var(--muted);text-decoration:none;transition:all 0.15s}
+.nav-lessons a.active{background:var(--gold);border-color:var(--gold);color:#000;font-weight:900}
+.nav-lessons a.done{border-color:#241800;color:#5a3a00}
+.nav-lessons a:hover:not(.active){border-color:var(--gold);color:var(--gold)}
+.nav-right{font-size:10px;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase}
+.hero{padding:60px 36px 36px;max-width:920px;margin:0 auto}
+.badge{font-family:var(--display);font-size:10px;font-weight:600;letter-spacing:0.15em;color:var(--gold);margin-bottom:12px;text-transform:uppercase;display:block}
+h1{font-family:var(--display);font-size:clamp(28px,4.5vw,54px);font-weight:900;line-height:1.0;margin-bottom:12px;color:var(--text)}
+h1 .hl{color:var(--gold)}
+.hero-meta{display:flex;gap:18px;font-size:10px;color:var(--muted);margin-bottom:20px;text-transform:uppercase;letter-spacing:0.08em;flex-wrap:wrap}
+.hero-desc{font-size:14px;line-height:1.8;color:#a09060;max-width:680px;border-left:2px solid var(--gold);padding-left:18px}
+.main{max-width:920px;margin:0 auto;padding:0 36px 80px}
+.section{margin-bottom:52px}
+h2{font-family:var(--display);font-size:16px;font-weight:900;color:var(--text);margin-bottom:18px;display:flex;align-items:center;gap:10px;text-transform:uppercase;letter-spacing:0.05em}
+h2::after{content:'';flex:1;height:1px;background:var(--border)}
+h3{font-size:11px;font-weight:700;color:var(--gold);letter-spacing:0.15em;text-transform:uppercase;margin:20px 0 10px}
+p{color:#a09060;line-height:1.8;margin-bottom:14px}
+p strong{color:var(--text);font-weight:600}
+code{background:#0c0a04;padding:2px 6px;color:var(--gold);font-size:11px;border:1px solid var(--border)}
+.code-block{background:#070600;border:1px solid var(--border);border-left:3px solid var(--gold);margin:18px 0;overflow:hidden}
+.code-header{background:#0c0a04;padding:9px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)}
+.code-title{font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted)}
+.code-label{font-size:9px;padding:2px 8px;background:var(--gold);color:#000;font-weight:900;letter-spacing:0.08em}
+pre{padding:18px;overflow-x:auto;font-family:var(--mono);font-size:12px;line-height:1.75;color:#d0c090}
+.kw{color:#f06000}.fn{color:#00d4f0}.st{color:#f0a800}.cm{color:#2a1e08;font-style:italic}.nm{color:#f0a800}.cl{color:#f000a0}.op{color:#4a3818}
+.concept{background:var(--paper);border:1px solid var(--border);padding:18px 22px;margin:18px 0}
+.concept-label{font-family:var(--display);font-size:9px;font-weight:600;letter-spacing:0.15em;text-transform:uppercase;color:var(--cyan);margin-bottom:8px}
+.concept p{margin:0;font-size:12px;color:#807040}
+.callout{display:flex;gap:14px;padding:14px 18px;margin:16px 0;border:1px solid}
+.callout.info{border-color:#001824;background:#020608}
+.callout.win{border-color:#102800;background:#040a00}
+.callout.warn{border-color:#301800;background:#0a0600}
+.callout.key{border-color:#182800;background:#060a00}
+.callout-icon{font-size:14px;flex-shrink:0;margin-top:2px}
+.callout-text{font-size:11px;line-height:1.7;color:#807040}
+.callout-text strong{color:var(--text)}
+.checklist{list-style:none;margin:16px 0}
+.checklist li{display:flex;gap:12px;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px;color:#807040}
+.checklist li:last-child{border-bottom:none}
+.checklist li::before{content:'○';color:var(--muted);flex-shrink:0}
+.checklist li.done::before{content:'◆';color:var(--gold)}
+.next-lesson{background:var(--paper);border:1px solid var(--border);padding:24px 28px;display:flex;align-items:center;justify-content:space-between;margin-top:56px;text-decoration:none;transition:border-color 0.15s}
+.next-lesson:hover{border-color:var(--gold)}
+.next-label{font-family:var(--display);font-size:9px;font-weight:600;letter-spacing:0.15em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.next-title{font-family:var(--display);font-size:14px;font-weight:900;color:var(--text)}
+.next-arrow{font-size:24px;color:var(--gold)}
+/* tables */
+.data-table{width:100%;border-collapse:collapse;font-size:11px;margin:16px 0}
+.data-table th{background:var(--paper);padding:8px 12px;text-align:left;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);font-weight:600;font-family:var(--display)}
+.data-table td{padding:8px 12px;border-bottom:1px solid #1a1408;color:#a09060}
+.data-table td:first-child{color:var(--text)}
+.data-table tr.highlight td{color:var(--gold)}
+/* comparison grid */
+.cmp-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:18px 0}
+.cmp-card{background:var(--paper);border:1px solid var(--border);padding:16px}
+.cmp-card.good{border-color:#182800}
+.cmp-card.bad{border-color:#281800}
+.cmp-label{font-family:var(--display);font-size:9px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:8px;color:var(--muted)}
+.cmp-card.good .cmp-label{color:var(--green)}
+.cmp-card.bad .cmp-label{color:var(--orange)}
+.cmp-text{font-size:11px;color:#807040;line-height:1.6}
+</style>
+</head>
+<body>
+<nav><div class="nav-brand">fine<span>Tune</span></div><div class="nav-lessons"><a href="ft-lesson-01.html" class="done">01</a><a href="ft-lesson-02.html" class="done">02</a><a href="ft-lesson-03.html" class="done">03</a><a href="ft-lesson-04.html" class="done">04</a><a href="ft-lesson-05.html" class="done">05</a><a href="ft-lesson-06.html" class="done">06</a><a href="ft-lesson-07.html" class="done">07</a><a href="ft-lesson-08.html" class="done">08</a><a href="ft-lesson-09.html" class="active">09</a><a href="ft-lesson-10.html" class="">10</a></div><div class="nav-right">Free GPU · Colab</div></nav>
+
+<div class="hero">
+  <span class="badge">Lesson 09 of 10 - Alignment</span>
+  <h1>DPO: Preference<br><span class="hl">Fine-Tuning</span></h1>
+  <div class="hero-meta"><span>⏱ 70 min</span><span>🎯 Alignment</span><span>✅ Chosen vs Rejected</span></div>
+  <p class="hero-desc">SFT teaches the model <em>what</em> to say. DPO (Direct Preference Optimization) teaches it <em>which</em> response is better when it could say multiple things. By training on (chosen, rejected) response pairs, DPO produces models that are more helpful, more honest, and refuse harmful requests more reliably - <strong>without needing a reward model</strong>.</p>
+</div>
+<div class="main">
+
+<div class="section">
+<h2>Why DPO After SFT?</h2>
+<p>SFT trains the model to imitate examples. But good behavior isn't just about imitation - it's about <em>preferences</em>. A model trained only on SFT might give two equally fluent but very different quality responses. DPO directly optimizes for the preference: response A is better than response B. It's the step that turns a capable model into a reliable one.</p>
+<div class="concept"><div class="concept-label">DPO vs RLHF</div><p>RLHF: Train a reward model, then use PPO (complex RL algorithm) to optimize against it. 3 models, 3x memory, unstable training. DPO: Mathematically equivalent to RLHF but rearranges to a simple supervised loss. 1 model, same memory as SFT, stable. DPO has largely replaced RLHF for most use cases.</p></div>
+</div>
+
+<div class="section">
+<h2>The DPO Loss Intuition</h2>
+<p>The DPO objective looks intimidating but the intuition is simple: <strong>increase the relative probability of the chosen response compared to the rejected one</strong>, while staying close to the SFT model (via an implicit KL penalty controlled by beta).</p>
+<div class="code-block">
+<div class="code-header"><div class="code-title">dpo_intuition.py - what DPO is actually optimizing</div><div class="code-label">INTUITION</div></div>
+<pre><span class="kw">import</span> torch
+
+<span class="cm"># DPO loss for one (prompt, chosen, rejected) triplet:
+#
+# loss = -log(sigmoid(beta * (log_ratio_chosen - log_ratio_rejected)))
+#
+# where:
+#   log_ratio_chosen  = log P_model(chosen|prompt) - log P_ref(chosen|prompt)
+#   log_ratio_rejected = log P_model(rejected|prompt) - log P_ref(rejected|prompt)
+#   beta = regularization (higher = stay closer to reference model)
+#
+# Intuition:
+#   - If model assigns much higher prob to chosen than ref → big positive reward
+#   - If model assigns much higher prob to rejected than ref → big negative reward
+#   - Beta controls how much we allow the model to deviate from the SFT baseline
+#   - beta=0.1: allow large deviation (aggressive fine-tuning)
+#   - beta=0.5: conservative (stay close to SFT model)
+
+<span class="kw">def</span> <span class="fn">dpo_loss</span>(chosen_logps, rejected_logps, chosen_ref_logps, rejected_ref_logps, beta<span class="op">=</span><span class="nm">0.1</span>):
+    chosen_ratios  <span class="op">=</span> chosen_logps  <span class="op">-</span> chosen_ref_logps   <span class="cm"># how much better than ref?</span>
+    rejected_ratios <span class="op">=</span> rejected_logps <span class="op">-</span> rejected_ref_logps
+    logits <span class="op">=</span> beta <span class="op">*</span> (chosen_ratios <span class="op">-</span> rejected_ratios)
+    loss   <span class="op">=</span> <span class="op">-</span>torch.nn.functional.<span class="fn">logsigmoid</span>(logits).<span class="fn">mean</span>()
+    <span class="cm"># reward_chosen  = beta * chosen_ratios.mean()  (track this - should rise)</span>
+    <span class="cm"># reward_rejected = beta * rejected_ratios.mean() (track this - should fall)</span>
+    <span class="kw">return</span> loss</pre>
+</div>
+</div>
+
+<div class="section">
+<h2>Building a Preference Dataset</h2>
+<div class="code-block">
+<div class="code-header"><div class="code-title">dpo_dataset.py - preference data format and sources</div><div class="code-label">DATA</div></div>
+<pre><span class="cm"># DPO dataset format: each example has prompt, chosen, rejected</span>
+example <span class="op">=</span> {
+    <span class="st">"prompt"</span>:   <span class="st">"Explain backpropagation."</span>,
+    <span class="st">"chosen"</span>:   <span class="st">"Backpropagation computes gradients by applying the chain rule..."</span>,
+    <span class="st">"rejected"</span>: <span class="st">"Backpropagation is when you train neural networks."</span>,
+}
+
+<span class="cm"># ── Option 1: Use existing preference datasets ─────────────────</span>
+<span class="kw">from</span> datasets <span class="kw">import</span> load_dataset
+ds <span class="op">=</span> <span class="fn">load_dataset</span>(<span class="st">"HuggingFaceH4/ultrafeedback_binarized"</span>)
+<span class="cm"># 64K examples, prompt + chosen + rejected. GPT-4 rated.</span>
+
+<span class="cm"># ── Option 2: Generate with your SFT model ────────────────────
+# 1. Generate 4 responses per prompt from your SFT model
+# 2. Use GPT-4 to rank them (chosen = rank 1, rejected = rank 4)
+# 3. Build dataset from these rankings
+# This "self-play DPO" approach works very well in practice</span>
+
+<span class="kw">def</span> <span class="fn">generate_dpo_data</span>(sft_model, prompts, n_responses<span class="op">=</span><span class="nm">4</span>):
+    examples <span class="op">=</span> []
+    <span class="kw">for</span> prompt <span class="kw">in</span> prompts:
+        responses <span class="op">=</span> [<span class="fn">generate</span>(sft_model, prompt, temperature<span class="op">=</span><span class="nm">0.9</span>) <span class="kw">for</span> _ <span class="kw">in</span> <span class="fn">range</span>(n_responses)]
+        scores    <span class="op">=</span> [<span class="fn">judge_response</span>(prompt, r)[<span class="st">"helpfulness"</span>] <span class="kw">for</span> r <span class="kw">in</span> responses]
+        best_idx  <span class="op">=</span> scores.<span class="fn">index</span>(<span class="fn">max</span>(scores))
+        worst_idx <span class="op">=</span> scores.<span class="fn">index</span>(<span class="fn">min</span>(scores))
+        examples.<span class="fn">append</span>({<span class="st">"prompt"</span>: prompt, <span class="st">"chosen"</span>: responses[best_idx], <span class="st">"rejected"</span>: responses[worst_idx]})
+    <span class="kw">return</span> examples</pre>
+</div>
+<div class="code-block">
+<div class="code-header"><div class="code-title">run_dpo.py - DPO training with TRL</div><div class="code-label">CORE CODE</div></div>
+<pre><span class="kw">from</span> trl <span class="kw">import</span> DPOTrainer, DPOConfig
+
+dpo_config <span class="op">=</span> DPOConfig(
+    beta<span class="op">=</span><span class="nm">0.1</span>,                    <span class="cm"># regularization (0.1 = standard)</span>
+    max_length<span class="op">=</span><span class="nm">1024</span>,
+    max_prompt_length<span class="op">=</span><span class="nm">512</span>,
+    output_dir<span class="op">=</span><span class="st">"./llama3-dpo"</span>,
+    num_train_epochs<span class="op">=</span><span class="nm">1</span>,          <span class="cm"># DPO: usually 1-3 epochs only</span>
+    per_device_train_batch_size<span class="op">=</span><span class="nm">2</span>,
+    gradient_accumulation_steps<span class="op">=</span><span class="nm">8</span>,
+    learning_rate<span class="op">=</span><span class="nm">5e-7</span>,          <span class="cm"># MUCH lower than SFT lr (1e-6 to 5e-7)</span>
+    bf16<span class="op">=</span><span class="kw">True</span>,
+    optim<span class="op">=</span><span class="st">"paged_adamw_32bit"</span>,
+)
+
+trainer <span class="op">=</span> DPOTrainer(
+    model<span class="op">=</span>sft_model,       <span class="cm"># start from your SFT checkpoint</span>
+    ref_model<span class="op">=</span><span class="kw">None</span>,        <span class="cm"># None = use implicit reference via PEFT</span>
+    args<span class="op">=</span>dpo_config,
+    train_dataset<span class="op">=</span>dpo_train,
+    eval_dataset<span class="op">=</span>dpo_eval,
+    tokenizer<span class="op">=</span>tokenizer,
+)
+trainer.<span class="fn">train</span>()
+<span class="cm"># Monitor: reward_chosen should rise, reward_rejected should fall
+# If both fall: beta too high or LR too high</span></pre>
+</div>
+</div>
+
+<div class="section">
+<h2>What You Now Know</h2>
+<ul class="checklist">
+<li class="done">DPO trains on (prompt, chosen, rejected) pairs - no reward model needed</li>
+<li class="done">Beta controls regularization: higher = stay closer to SFT baseline</li>
+<li class="done">DPO LR should be 10-100x lower than SFT LR (5e-7 is typical)</li>
+<li class="done">Self-play DPO: generate multiple responses, judge them, use best/worst as pairs</li>
+<li class="done">Monitor reward_chosen (should rise) and reward_rejected (should fall)</li>
+</ul>
+</div>
+
+<a href="ft-lesson-10.html" class="next-lesson"><div><div class="next-label">Next Lesson</div><div class="next-title">Lesson 10 - Full Pipeline: End-to-End Project</div></div><div class="next-arrow">→</div></a>
+</div></body></html>

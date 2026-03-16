@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lesson 01 - Why Fine-Tuning? | FineTune</title>
+<link href="https://fonts.googleapis.com/css2?family=Inconsolata:wght@300;400;600;700;900&family=Unbounded:wght@300;400;600;900&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0800;--paper:#120e04;--border:#241c08;
+  --gold:#f0a800;--orange:#f06000;--cyan:#00d4f0;--pink:#f000a0;--green:#00e080;
+  --text:#f0e8d8;--muted:#5a4820;
+  --mono:'Inconsolata',monospace;--display:'Unbounded',sans-serif;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:13px;line-height:1.75;min-height:100vh}
+nav{background:var(--paper);border-bottom:1px solid var(--border);padding:12px 32px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.nav-brand{font-family:var(--display);font-size:13px;font-weight:900;color:var(--gold);letter-spacing:0.02em}
+.nav-brand span{color:var(--text);font-weight:300}
+.nav-lessons{display:flex;gap:2px}
+.nav-lessons a{display:flex;align-items:center;justify-content:center;width:26px;height:26px;font-size:9px;border:1px solid var(--border);color:var(--muted);text-decoration:none;transition:all 0.15s}
+.nav-lessons a.active{background:var(--gold);border-color:var(--gold);color:#000;font-weight:900}
+.nav-lessons a.done{border-color:#241800;color:#5a3a00}
+.nav-lessons a:hover:not(.active){border-color:var(--gold);color:var(--gold)}
+.nav-right{font-size:10px;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase}
+.hero{padding:60px 36px 36px;max-width:920px;margin:0 auto}
+.badge{font-family:var(--display);font-size:10px;font-weight:600;letter-spacing:0.15em;color:var(--gold);margin-bottom:12px;text-transform:uppercase;display:block}
+h1{font-family:var(--display);font-size:clamp(28px,4.5vw,54px);font-weight:900;line-height:1.0;margin-bottom:12px;color:var(--text)}
+h1 .hl{color:var(--gold)}
+.hero-meta{display:flex;gap:18px;font-size:10px;color:var(--muted);margin-bottom:20px;text-transform:uppercase;letter-spacing:0.08em;flex-wrap:wrap}
+.hero-desc{font-size:14px;line-height:1.8;color:#a09060;max-width:680px;border-left:2px solid var(--gold);padding-left:18px}
+.main{max-width:920px;margin:0 auto;padding:0 36px 80px}
+.section{margin-bottom:52px}
+h2{font-family:var(--display);font-size:16px;font-weight:900;color:var(--text);margin-bottom:18px;display:flex;align-items:center;gap:10px;text-transform:uppercase;letter-spacing:0.05em}
+h2::after{content:'';flex:1;height:1px;background:var(--border)}
+h3{font-size:11px;font-weight:700;color:var(--gold);letter-spacing:0.15em;text-transform:uppercase;margin:20px 0 10px}
+p{color:#a09060;line-height:1.8;margin-bottom:14px}
+p strong{color:var(--text);font-weight:600}
+code{background:#0c0a04;padding:2px 6px;color:var(--gold);font-size:11px;border:1px solid var(--border)}
+.code-block{background:#070600;border:1px solid var(--border);border-left:3px solid var(--gold);margin:18px 0;overflow:hidden}
+.code-header{background:#0c0a04;padding:9px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)}
+.code-title{font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted)}
+.code-label{font-size:9px;padding:2px 8px;background:var(--gold);color:#000;font-weight:900;letter-spacing:0.08em}
+pre{padding:18px;overflow-x:auto;font-family:var(--mono);font-size:12px;line-height:1.75;color:#d0c090}
+.kw{color:#f06000}.fn{color:#00d4f0}.st{color:#f0a800}.cm{color:#2a1e08;font-style:italic}.nm{color:#f0a800}.cl{color:#f000a0}.op{color:#4a3818}
+.concept{background:var(--paper);border:1px solid var(--border);padding:18px 22px;margin:18px 0}
+.concept-label{font-family:var(--display);font-size:9px;font-weight:600;letter-spacing:0.15em;text-transform:uppercase;color:var(--cyan);margin-bottom:8px}
+.concept p{margin:0;font-size:12px;color:#807040}
+.callout{display:flex;gap:14px;padding:14px 18px;margin:16px 0;border:1px solid}
+.callout.info{border-color:#001824;background:#020608}
+.callout.win{border-color:#102800;background:#040a00}
+.callout.warn{border-color:#301800;background:#0a0600}
+.callout.key{border-color:#182800;background:#060a00}
+.callout-icon{font-size:14px;flex-shrink:0;margin-top:2px}
+.callout-text{font-size:11px;line-height:1.7;color:#807040}
+.callout-text strong{color:var(--text)}
+.checklist{list-style:none;margin:16px 0}
+.checklist li{display:flex;gap:12px;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px;color:#807040}
+.checklist li:last-child{border-bottom:none}
+.checklist li::before{content:'○';color:var(--muted);flex-shrink:0}
+.checklist li.done::before{content:'◆';color:var(--gold)}
+.next-lesson{background:var(--paper);border:1px solid var(--border);padding:24px 28px;display:flex;align-items:center;justify-content:space-between;margin-top:56px;text-decoration:none;transition:border-color 0.15s}
+.next-lesson:hover{border-color:var(--gold)}
+.next-label{font-family:var(--display);font-size:9px;font-weight:600;letter-spacing:0.15em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.next-title{font-family:var(--display);font-size:14px;font-weight:900;color:var(--text)}
+.next-arrow{font-size:24px;color:var(--gold)}
+/* tables */
+.data-table{width:100%;border-collapse:collapse;font-size:11px;margin:16px 0}
+.data-table th{background:var(--paper);padding:8px 12px;text-align:left;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);font-weight:600;font-family:var(--display)}
+.data-table td{padding:8px 12px;border-bottom:1px solid #1a1408;color:#a09060}
+.data-table td:first-child{color:var(--text)}
+.data-table tr.highlight td{color:var(--gold)}
+/* comparison grid */
+.cmp-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:18px 0}
+.cmp-card{background:var(--paper);border:1px solid var(--border);padding:16px}
+.cmp-card.good{border-color:#182800}
+.cmp-card.bad{border-color:#281800}
+.cmp-label{font-family:var(--display);font-size:9px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:8px;color:var(--muted)}
+.cmp-card.good .cmp-label{color:var(--green)}
+.cmp-card.bad .cmp-label{color:var(--orange)}
+.cmp-text{font-size:11px;color:#807040;line-height:1.6}
+</style>
+</head>
+<body>
+<nav><div class="nav-brand">fine<span>Tune</span></div><div class="nav-lessons"><a href="ft-lesson-01.html" class="active">01</a><a href="ft-lesson-02.html" class="">02</a><a href="ft-lesson-03.html" class="">03</a><a href="ft-lesson-04.html" class="">04</a><a href="ft-lesson-05.html" class="">05</a><a href="ft-lesson-06.html" class="">06</a><a href="ft-lesson-07.html" class="">07</a><a href="ft-lesson-08.html" class="">08</a><a href="ft-lesson-09.html" class="">09</a><a href="ft-lesson-10.html" class="">10</a></div><div class="nav-right">Free GPU · Colab</div></nav>
+
+<div class="hero">
+  <span class="badge">Lesson 01 of 10 - Foundation</span>
+  <h1>Why <span class="hl">Fine-Tuning</span>?<br>Pre-Train vs Adapt</h1>
+  <div class="hero-meta"><span>⏱ 45 min</span><span>🧠 Intuition</span><span>💡 Theory-First</span></div>
+  <p class="hero-desc">A base LLM knows almost everything - but it answers like an internet document, not an assistant. Fine-tuning is the process of taking that raw capability and <strong>shaping behavior without re-learning facts</strong>. Understanding the difference between pre-training, instruction tuning, and RLHF is the first critical mental model.</p>
+</div>
+<div class="main">
+
+<div class="section">
+<h2>The Three Phases of Making an LLM</h2>
+<p>Every production LLM you interact with went through at least two, usually all three, of these phases. They have completely different goals, costs, and datasets.</p>
+<div style="background:var(--paper);border:1px solid var(--border);padding:24px;margin:18px 0">
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+    <div style="border:1px solid #001830;background:#020608;padding:16px">
+      <div style="font-family:var(--display);font-size:9px;font-weight:600;letter-spacing:0.15em;text-transform:uppercase;color:var(--cyan);margin-bottom:10px">Phase 1: Pre-Training</div>
+      <div style="font-size:11px;color:#808060;line-height:1.6">Next-token prediction on trillions of web tokens. Learns world knowledge, language, reasoning. Costs $1M–$100M. Done once by labs.</div>
+      <div style="margin-top:10px;font-size:10px;color:var(--muted)">Data: CommonCrawl, books, code<br>Goal: compress world knowledge<br>Result: "base model"</div>
+    </div>
+    <div style="border:1px solid #182800;background:#060a00;padding:16px">
+      <div style="font-family:var(--display);font-size:9px;font-weight:600;letter-spacing:0.15em;text-transform:uppercase;color:var(--green);margin-bottom:10px">Phase 2: Instruction Tuning</div>
+      <div style="font-size:11px;color:#808060;line-height:1.6">Fine-tune on (instruction, response) pairs. Teaches the model to follow directions, answer helpfully, use chat format. Costs $100–$10K.</div>
+      <div style="margin-top:10px;font-size:10px;color:var(--muted)">Data: Alpaca, ShareGPT, custom<br>Goal: shape behavior/format<br>Result: "instruct model"</div>
+    </div>
+    <div style="border:1px solid #280018;background:#0a0006;padding:16px">
+      <div style="font-family:var(--display);font-size:9px;font-weight:600;letter-spacing:0.15em;text-transform:uppercase;color:var(--pink);margin-bottom:10px">Phase 3: RLHF / DPO</div>
+      <div style="font-size:11px;color:#808060;line-height:1.6">Human feedback or preference data aligns values: helpful, harmless, honest. Often uses PPO or DPO. Makes models safe and pleasant.</div>
+      <div style="margin-top:10px;font-size:10px;color:var(--muted)">Data: preference pairs<br>Goal: align with human values<br>Result: "chat model"</div>
+    </div>
+  </div>
+</div>
+<div class="concept"><div class="concept-label">Key Insight</div><p>Base models know the same facts as instruct models. The difference is purely behavioral. When you fine-tune, you are NOT teaching new knowledge - you are reshaping how that knowledge gets expressed. This is why fine-tuning needs very little data: you are changing style and format, not filling an empty brain.</p></div>
+</div>
+
+<div class="section">
+<h2>When Fine-Tuning Beats Prompting</h2>
+<p>Before spending GPU time, ask: could a really good system prompt solve this? Prompting is free and instant. Fine-tuning takes hours and money. But fine-tuning wins decisively in certain cases:</p>
+<table class="data-table">
+<thead><tr><th>Scenario</th><th>Prompting Works?</th><th>Fine-Tune?</th><th>Why</th></tr></thead>
+<tbody>
+<tr><td>JSON output format</td><td>Usually yes</td><td>Only if brittle</td><td>Few-shot examples often sufficient</td></tr>
+<tr><td>Domain vocabulary / style</td><td>Somewhat</td><td><strong>Yes</strong></td><td>Consistent tone needs weight-level change</td></tr>
+<tr><td>Speed (no system prompt tokens)</td><td>No</td><td><strong>Yes</strong></td><td>Fine-tuned model needs fewer prompt tokens</td></tr>
+<tr class="highlight"><td>Custom knowledge base</td><td>No</td><td><strong>Yes</strong></td><td>Model must internalize domain facts</td></tr>
+<tr class="highlight"><td>Latency-critical production</td><td>No</td><td><strong>Yes</strong></td><td>Shorter prompts = faster TTFT</td></tr>
+<tr><td>One-off task</td><td>Yes</td><td>Overkill</td><td>Not worth the iteration cost</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="section">
+<h2>Full Fine-Tune vs Parameter-Efficient Methods</h2>
+<p>Fine-tuning ALL parameters of a 7B model requires ~112GB VRAM (weights + gradients + optimizer states). Free GPUs give you 15GB. This is why the course focuses on <strong>QLoRA</strong> - Quantized Low-Rank Adaptation - which fine-tunes tiny adapter layers on top of a frozen quantized model. Same quality, 10× less memory.</p>
+<div class="cmp-grid">
+  <div class="cmp-card good"><div class="cmp-label">QLoRA (this course)</div><div class="cmp-text">Freeze base model in 4-bit. Train 1-5% of params as small matrices. VRAM: 10-16GB. Works on free Colab T4. Quality: 95%+ of full fine-tune.</div></div>
+  <div class="cmp-card bad"><div class="cmp-label">Full Fine-Tune</div><div class="cmp-text">Update all parameters. VRAM: 80-160GB for 7B model. Needs 8×A100 cluster. Quality: 100% ceiling. Cost: $100-$1000 per run.</div></div>
+  <div class="cmp-card good"><div class="cmp-label">LoRA (no quantization)</div><div class="cmp-text">Train adapters on FP16 model. VRAM: 20-40GB. Faster training than QLoRA. Needs A100 or 2×3090.</div></div>
+  <div class="cmp-card bad"><div class="cmp-label">Prompt Engineering</div><div class="cmp-text">No training. But long prompts hit context limits, add latency, expose system prompts, and can't change core behavior.</div></div>
+</div>
+</div>
+
+<div class="section">
+<h2>The Mental Model: Adapter = Delta</h2>
+<p>LoRA trains weight updates, not weights. For any weight matrix W, instead of updating W directly, LoRA learns a small delta: <code>W' = W + BA</code> where B and A are thin matrices. If W is (4096, 4096), B is (4096, 16) and A is (16, 4096). That's 16M vs 131M parameters - 8x fewer. The "rank" (16 here) controls this tradeoff.</p>
+<div class="code-block">
+<div class="code-header"><div class="code-title">lora_intuition.py</div><div class="code-label">INTUITION</div></div>
+<pre><span class="kw">import</span> torch
+<span class="kw">import</span> torch.nn <span class="kw">as</span> nn
+
+<span class="cm"># Frozen base model weight (e.g., attention projection in Llama-7B)</span>
+W_frozen <span class="op">=</span> torch.<span class="fn">randn</span>(<span class="nm">4096</span>, <span class="nm">4096</span>)  <span class="cm"># 16.8M params - frozen, no grad</span>
+W_frozen.requires_grad <span class="op">=</span> <span class="kw">False</span>
+
+<span class="cm"># LoRA adapters (trainable) - rank r=16</span>
+r <span class="op">=</span> <span class="nm">16</span>
+A <span class="op">=</span> nn.<span class="cl">Linear</span>(<span class="nm">4096</span>, r,    bias<span class="op">=</span><span class="kw">False</span>)  <span class="cm"># 65,536 params</span>
+B <span class="op">=</span> nn.<span class="cl">Linear</span>(r,    <span class="nm">4096</span>, bias<span class="op">=</span><span class="kw">False</span>)  <span class="cm"># 65,536 params</span>
+<span class="cm"># Total trainable: 131K vs 16.8M = 0.78% of original!</span>
+
+nn.init.<span class="fn">normal_</span>(A.weight, std<span class="op">=</span><span class="nm">0.02</span>)
+nn.init.<span class="fn">zeros_</span>(B.weight)  <span class="cm"># B init to 0 so LoRA starts as identity</span>
+
+<span class="kw">def</span> <span class="fn">lora_forward</span>(x, alpha<span class="op">=</span><span class="nm">16</span>):
+    <span class="cm"># Base path (frozen) + adapter path (trainable)</span>
+    base    <span class="op">=</span> x <span class="op">@</span> W_frozen.T                   <span class="cm"># original computation</span>
+    adapter <span class="op">=</span> B(A(x)) <span class="op">*</span> (alpha <span class="op">/</span> r)           <span class="cm"># low-rank update, scaled</span>
+    <span class="kw">return</span> base <span class="op">+</span> adapter                      <span class="cm"># W_frozen + B@A is the new W</span>
+
+<span class="cm"># alpha/r scaling: keeps adapter contribution stable as r changes.
+# alpha=16, r=16 → scale=1.0 (no scaling)
+# alpha=16, r=8  → scale=2.0 (stronger adapter per param)
+# Typical: set alpha = r (or 2*r for stronger adaptation)</span></pre>
+</div>
+</div>
+
+<div class="section">
+<h2>What You Now Know</h2>
+<ul class="checklist">
+<li class="done">Three phases: pre-training (knowledge), instruction tuning (behavior), RLHF (values)</li>
+<li class="done">Fine-tuning changes HOW knowledge is expressed, not what the model knows</li>
+<li class="done">QLoRA: 4-bit frozen base + tiny trainable adapters - runs on free T4 GPU</li>
+<li class="done">LoRA equation: W' = W + BA where B,A are low-rank matrices</li>
+<li class="done">B initialized to zero so training starts from the pre-trained baseline</li>
+</ul>
+</div>
+
+<a href="ft-lesson-02.html" class="next-lesson"><div><div class="next-label">Next Lesson</div><div class="next-title">Lesson 02 - Datasets & Data Quality</div></div><div class="next-arrow">→</div></a>
+</div></body></html>

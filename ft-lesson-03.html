@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lesson 03 - QLoRA: 4-Bit Quantization | FineTune</title>
+<link href="https://fonts.googleapis.com/css2?family=Inconsolata:wght@300;400;600;700;900&family=Unbounded:wght@300;400;600;900&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0800;--paper:#120e04;--border:#241c08;
+  --gold:#f0a800;--orange:#f06000;--cyan:#00d4f0;--pink:#f000a0;--green:#00e080;
+  --text:#f0e8d8;--muted:#5a4820;
+  --mono:'Inconsolata',monospace;--display:'Unbounded',sans-serif;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:13px;line-height:1.75;min-height:100vh}
+nav{background:var(--paper);border-bottom:1px solid var(--border);padding:12px 32px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.nav-brand{font-family:var(--display);font-size:13px;font-weight:900;color:var(--gold);letter-spacing:0.02em}
+.nav-brand span{color:var(--text);font-weight:300}
+.nav-lessons{display:flex;gap:2px}
+.nav-lessons a{display:flex;align-items:center;justify-content:center;width:26px;height:26px;font-size:9px;border:1px solid var(--border);color:var(--muted);text-decoration:none;transition:all 0.15s}
+.nav-lessons a.active{background:var(--gold);border-color:var(--gold);color:#000;font-weight:900}
+.nav-lessons a.done{border-color:#241800;color:#5a3a00}
+.nav-lessons a:hover:not(.active){border-color:var(--gold);color:var(--gold)}
+.nav-right{font-size:10px;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase}
+.hero{padding:60px 36px 36px;max-width:920px;margin:0 auto}
+.badge{font-family:var(--display);font-size:10px;font-weight:600;letter-spacing:0.15em;color:var(--gold);margin-bottom:12px;text-transform:uppercase;display:block}
+h1{font-family:var(--display);font-size:clamp(28px,4.5vw,54px);font-weight:900;line-height:1.0;margin-bottom:12px;color:var(--text)}
+h1 .hl{color:var(--gold)}
+.hero-meta{display:flex;gap:18px;font-size:10px;color:var(--muted);margin-bottom:20px;text-transform:uppercase;letter-spacing:0.08em;flex-wrap:wrap}
+.hero-desc{font-size:14px;line-height:1.8;color:#a09060;max-width:680px;border-left:2px solid var(--gold);padding-left:18px}
+.main{max-width:920px;margin:0 auto;padding:0 36px 80px}
+.section{margin-bottom:52px}
+h2{font-family:var(--display);font-size:16px;font-weight:900;color:var(--text);margin-bottom:18px;display:flex;align-items:center;gap:10px;text-transform:uppercase;letter-spacing:0.05em}
+h2::after{content:'';flex:1;height:1px;background:var(--border)}
+h3{font-size:11px;font-weight:700;color:var(--gold);letter-spacing:0.15em;text-transform:uppercase;margin:20px 0 10px}
+p{color:#a09060;line-height:1.8;margin-bottom:14px}
+p strong{color:var(--text);font-weight:600}
+code{background:#0c0a04;padding:2px 6px;color:var(--gold);font-size:11px;border:1px solid var(--border)}
+.code-block{background:#070600;border:1px solid var(--border);border-left:3px solid var(--gold);margin:18px 0;overflow:hidden}
+.code-header{background:#0c0a04;padding:9px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)}
+.code-title{font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted)}
+.code-label{font-size:9px;padding:2px 8px;background:var(--gold);color:#000;font-weight:900;letter-spacing:0.08em}
+pre{padding:18px;overflow-x:auto;font-family:var(--mono);font-size:12px;line-height:1.75;color:#d0c090}
+.kw{color:#f06000}.fn{color:#00d4f0}.st{color:#f0a800}.cm{color:#2a1e08;font-style:italic}.nm{color:#f0a800}.cl{color:#f000a0}.op{color:#4a3818}
+.concept{background:var(--paper);border:1px solid var(--border);padding:18px 22px;margin:18px 0}
+.concept-label{font-family:var(--display);font-size:9px;font-weight:600;letter-spacing:0.15em;text-transform:uppercase;color:var(--cyan);margin-bottom:8px}
+.concept p{margin:0;font-size:12px;color:#807040}
+.callout{display:flex;gap:14px;padding:14px 18px;margin:16px 0;border:1px solid}
+.callout.info{border-color:#001824;background:#020608}
+.callout.win{border-color:#102800;background:#040a00}
+.callout.warn{border-color:#301800;background:#0a0600}
+.callout.key{border-color:#182800;background:#060a00}
+.callout-icon{font-size:14px;flex-shrink:0;margin-top:2px}
+.callout-text{font-size:11px;line-height:1.7;color:#807040}
+.callout-text strong{color:var(--text)}
+.checklist{list-style:none;margin:16px 0}
+.checklist li{display:flex;gap:12px;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px;color:#807040}
+.checklist li:last-child{border-bottom:none}
+.checklist li::before{content:'○';color:var(--muted);flex-shrink:0}
+.checklist li.done::before{content:'◆';color:var(--gold)}
+.next-lesson{background:var(--paper);border:1px solid var(--border);padding:24px 28px;display:flex;align-items:center;justify-content:space-between;margin-top:56px;text-decoration:none;transition:border-color 0.15s}
+.next-lesson:hover{border-color:var(--gold)}
+.next-label{font-family:var(--display);font-size:9px;font-weight:600;letter-spacing:0.15em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.next-title{font-family:var(--display);font-size:14px;font-weight:900;color:var(--text)}
+.next-arrow{font-size:24px;color:var(--gold)}
+/* tables */
+.data-table{width:100%;border-collapse:collapse;font-size:11px;margin:16px 0}
+.data-table th{background:var(--paper);padding:8px 12px;text-align:left;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);font-weight:600;font-family:var(--display)}
+.data-table td{padding:8px 12px;border-bottom:1px solid #1a1408;color:#a09060}
+.data-table td:first-child{color:var(--text)}
+.data-table tr.highlight td{color:var(--gold)}
+/* comparison grid */
+.cmp-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:18px 0}
+.cmp-card{background:var(--paper);border:1px solid var(--border);padding:16px}
+.cmp-card.good{border-color:#182800}
+.cmp-card.bad{border-color:#281800}
+.cmp-label{font-family:var(--display);font-size:9px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:8px;color:var(--muted)}
+.cmp-card.good .cmp-label{color:var(--green)}
+.cmp-card.bad .cmp-label{color:var(--orange)}
+.cmp-text{font-size:11px;color:#807040;line-height:1.6}
+</style>
+</head>
+<body>
+<nav><div class="nav-brand">fine<span>Tune</span></div><div class="nav-lessons"><a href="ft-lesson-01.html" class="done">01</a><a href="ft-lesson-02.html" class="done">02</a><a href="ft-lesson-03.html" class="active">03</a><a href="ft-lesson-04.html" class="">04</a><a href="ft-lesson-05.html" class="">05</a><a href="ft-lesson-06.html" class="">06</a><a href="ft-lesson-07.html" class="">07</a><a href="ft-lesson-08.html" class="">08</a><a href="ft-lesson-09.html" class="">09</a><a href="ft-lesson-10.html" class="">10</a></div><div class="nav-right">Free GPU · Colab</div></nav>
+
+<div class="hero">
+  <span class="badge">Lesson 03 of 10 - Core Technique</span>
+  <h1><span class="hl">QLoRA</span>: 4-Bit<br>Quantization</h1>
+  <div class="hero-meta"><span>⏱ 75 min</span><span>🔢 Quantization Theory</span><span>💾 Memory Math</span></div>
+  <p class="hero-desc">QLoRA fits a 7B model into 10GB by quantizing weights to 4-bit integers. But naively quantizing destroys precision - QLoRA uses <strong>NF4 (NormalFloat4)</strong>, a data type designed specifically for the normal distribution of neural network weights. Understanding <em>why</em> this works is what separates engineers who can debug quantization from those who cargo-cult configs.</p>
+</div>
+<div class="main">
+
+<div class="section">
+<h2>The Memory Math</h2>
+<p>Before understanding how QLoRA saves memory, understand what takes memory. A 7B parameter model in different precisions:</p>
+<table class="data-table">
+<thead><tr><th>Component</th><th>FP32 (4B)</th><th>FP16/BF16 (2B)</th><th>INT8 (1B)</th><th>NF4 (0.5B)</th></tr></thead>
+<tbody>
+<tr><td>7B weights</td><td>28 GB</td><td>14 GB</td><td>7 GB</td><td>3.5 GB</td></tr>
+<tr><td>+ Optimizer states (Adam)</td><td>+56 GB</td><td>+28 GB</td><td>N/A (frozen)</td><td>N/A (frozen)</td></tr>
+<tr><td>+ Gradients</td><td>+28 GB</td><td>+14 GB</td><td>N/A (frozen)</td><td>N/A (frozen)</td></tr>
+<tr><td>+ Activations (batch=1)</td><td>+2 GB</td><td>+1 GB</td><td>+1 GB</td><td>+1 GB</td></tr>
+<tr class="highlight"><td>Total (7B model)</td><td>114 GB</td><td>57 GB</td><td>~8 GB</td><td>~5-6 GB</td></tr>
+</tbody>
+</table>
+<p><strong>QLoRA keeps the base model in NF4 (frozen)</strong> and only trains tiny LoRA adapters in BF16. The base model has no optimizer states or gradients - they're frozen. Only the adapters (~50MB) need full precision training states. This is how a 7B model fits in 10GB.</p>
+</div>
+
+<div class="section">
+<h2>NF4: Why Not INT4?</h2>
+<p>Standard INT4 maps values uniformly: 0,1,2,...,15 → -8,-7,-6,...,7. But neural network weights follow a <strong>normal (Gaussian) distribution</strong> - most weights are near zero, few are large. A uniform quantization grid wastes precision on values that rarely occur.</p>
+<p>NF4 uses non-uniform quantization levels derived from the normal distribution's quantile function. This means more grid points near zero (where most weights live) and fewer at the extremes. Same 4 bits, dramatically less quantization error.</p>
+<div class="code-block">
+<div class="code-header"><div class="code-title">nf4_intuition.py - why NF4 beats INT4</div><div class="code-label">INTUITION</div></div>
+<pre><span class="kw">import</span> torch
+<span class="kw">import</span> scipy.stats <span class="kw">as</span> stats
+<span class="kw">import</span> numpy <span class="kw">as</span> np
+
+<span class="cm"># INT4 quantization levels (uniform)</span>
+int4_levels <span class="op">=</span> np.<span class="fn">linspace</span>(<span class="op">-</span><span class="nm">1</span>, <span class="nm">1</span>, <span class="nm">16</span>)
+<span class="cm"># [-1.0, -0.867, -0.733, -0.6, ..., 0.6, 0.733, 0.867, 1.0]</span>
+
+<span class="cm"># NF4 levels (from normal distribution quantiles)</span>
+<span class="cm"># Placed at quantiles of N(0,1) so each bucket has equal probability mass</span>
+quantiles <span class="op">=</span> np.<span class="fn">linspace</span>(<span class="nm">1</span><span class="op">/</span><span class="nm">32</span>, <span class="nm">31</span><span class="op">/</span><span class="nm">32</span>, <span class="nm">16</span>)
+nf4_levels <span class="op">=</span> stats.norm.<span class="fn">ppf</span>(quantiles)
+nf4_levels <span class="op">/=</span> np.<span class="fn">max</span>(np.<span class="fn">abs</span>(nf4_levels))  <span class="cm"># normalize to [-1, 1]</span>
+<span class="cm"># [-1.0, -0.69, -0.52, -0.39, -0.28, -0.18, -0.09, 0.0,
+#   0.09,  0.18,  0.28,  0.39,  0.52,  0.69,  1.0]
+# ← more levels near zero (dense) fewer at extremes</span>
+
+<span class="cm"># Quantization error comparison on realistic weight tensor</span>
+weights <span class="op">=</span> torch.<span class="fn">randn</span>(<span class="nm">1000</span>)  <span class="cm"># normal distribution of weights</span>
+weights_np <span class="op">=</span> weights.<span class="fn">numpy</span>()
+weights_norm <span class="op">=</span> weights_np <span class="op">/</span> np.<span class="fn">max</span>(np.<span class="fn">abs</span>(weights_np))
+
+<span class="kw">def</span> <span class="fn">quantize</span>(w, levels):
+    idx <span class="op">=</span> np.<span class="fn">argmin</span>(np.<span class="fn">abs</span>(w[:, <span class="kw">None</span>] <span class="op">-</span> levels[<span class="kw">None</span>, :]), axis<span class="op">=</span><span class="nm">1</span>)
+    <span class="kw">return</span> levels[idx]
+
+err_int4 <span class="op">=</span> np.<span class="fn">mean</span>((weights_norm <span class="op">-</span> <span class="fn">quantize</span>(weights_norm, int4_levels))<span class="op">**</span><span class="nm">2</span>)
+err_nf4  <span class="op">=</span> np.<span class="fn">mean</span>((weights_norm <span class="op">-</span> <span class="fn">quantize</span>(weights_norm, nf4_levels))<span class="op">**</span><span class="nm">2</span>)
+<span class="fn">print</span>(<span class="st">f"INT4 MSE: {err_int4:.6f}"</span>)  <span class="cm"># ~0.0031</span>
+<span class="fn">print</span>(<span class="st">f"NF4  MSE: {err_nf4:.6f}"</span>)  <span class="cm"># ~0.0019 - ~40% less error!</span></pre>
+</div>
+</div>
+
+<div class="section">
+<h2>Double Quantization & Block-wise Quantization</h2>
+<p>QLoRA applies two more tricks beyond NF4. <strong>Block-wise quantization</strong>: instead of one scale factor for the entire weight matrix, use a separate scale per small block (64 weights). This dramatically reduces the impact of outlier weights. <strong>Double quantization</strong>: the scale factors themselves are quantized (from FP32 to 8-bit), saving another ~0.5GB on a 7B model.</p>
+<div class="code-block">
+<div class="code-header"><div class="code-title">bnb_config.py - loading a 4-bit model with bitsandbytes</div><div class="code-label">PRODUCTION CODE</div></div>
+<pre><span class="kw">from</span> transformers <span class="kw">import</span> AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
+<span class="kw">import</span> torch
+
+bnb_config <span class="op">=</span> BitsAndBytesConfig(
+    load_in_4bit<span class="op">=</span><span class="kw">True</span>,                       <span class="cm"># enable 4-bit loading</span>
+    bnb_4bit_quant_type<span class="op">=</span><span class="st">"nf4"</span>,               <span class="cm"># NF4 data type (not INT4!)</span>
+    bnb_4bit_compute_dtype<span class="op">=</span>torch.bfloat16,    <span class="cm"># computation in BF16</span>
+    bnb_4bit_use_double_quant<span class="op">=</span><span class="kw">True</span>,           <span class="cm"># double-quantize the scales</span>
+)
+
+<span class="cm"># This downloads ~4GB for a 7B model (vs 14GB in FP16)</span>
+model <span class="op">=</span> AutoModelForCausalLM.<span class="fn">from_pretrained</span>(
+    <span class="st">"meta-llama/Meta-Llama-3-8B-model-Instruct"</span>,
+    quantization_config<span class="op">=</span>bnb_config,
+    device_map<span class="op">=</span><span class="st">"auto"</span>,           <span class="cm"># auto-place on GPU(s)</span>
+    torch_dtype<span class="op">=</span>torch.bfloat16,  <span class="cm"># for non-quantized layers (norms, etc)</span>
+    trust_remote_code<span class="op">=</span><span class="kw">True</span>,
+)
+
+<span class="cm"># Check VRAM usage</span>
+<span class="fn">print</span>(f<span class="st">"GPU mem allocated: {torch.cuda.memory_allocated()/1e9:.1f} GB"</span>)
+<span class="cm"># Expected: ~5.2 GB for Llama-3-8B-model (T4 has 15GB - we have room for adapters)</span>
+
+<span class="cm"># Prepare for k-bit training (important!)
+# This: casts layer norms to FP32, enables gradient checkpointing hooks</span>
+<span class="kw">from</span> peft <span class="kw">import</span> prepare_model_for_kbit_training
+model <span class="op">=</span> <span class="fn">prepare_model_for_kbit_training</span>(model)
+
+tokenizer <span class="op">=</span> AutoTokenizer.<span class="fn">from_pretrained</span>(<span class="st">"meta-llama/Meta-Llama-3-8B-model-Instruct"</span>)
+tokenizer.pad_token <span class="op">=</span> tokenizer.eos_token  <span class="cm"># Llama-3 has no pad token by default</span></pre>
+</div>
+<div class="callout key">
+<div class="callout-icon">✓</div>
+<div class="callout-text"><strong>prepare_model_for_kbit_training() is non-optional.</strong> It casts the layer norms (RMSNorm weights) from BF16 to FP32 - critical because norms need full precision even when weights are quantized. Skipping it causes NaN losses and very poor model quality.</div>
+</div>
+</div>
+
+<div class="section">
+<h2>What You Now Know</h2>
+<ul class="checklist">
+<li class="done">7B model memory: 28GB (FP32) → 14GB (FP16) → 5-6GB (NF4 + QLoRA adapters)</li>
+<li class="done">NF4 uses quantile-based levels matching the normal distribution of neural weights</li>
+<li class="done">Block-wise quantization: one scale per 64 weights (not per matrix)</li>
+<li class="done">Double quantization: scale factors are themselves quantized to 8-bit</li>
+<li class="done">prepare_model_for_kbit_training(): mandatory before adding LoRA adapters</li>
+</ul>
+</div>
+
+<a href="ft-lesson-04.html" class="next-lesson"><div><div class="next-label">Next Lesson</div><div class="next-title">Lesson 04 - LoRA Hyperparameters</div></div><div class="next-arrow">→</div></a>
+</div></body></html>
